@@ -22,8 +22,18 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: kb-labs/devkit/.github/actions/setup-node-pnpm@v1
-        with: { node-version: ${{ inputs.node-version }} }
+
+      # Composite action: pnpm + Node + cache
+      - uses: KirillBaranov/kb-labs-devkit/.github/actions/setup-node-pnpm@main
+        with:
+          node-version: ${{ inputs['node-version'] }}
+
+      # Add registry for npm publish (separate step — так надёжнее)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs['node-version'] }}
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
 
       - run: pnpm i --frozen-lockfile
       - run: pnpm build || true

@@ -6,10 +6,15 @@ on:
 jobs:
   pr:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: kb-labs/devkit/.github/actions/setup-node-pnpm@v1
-        with: { node-version: '20' }
+
+      - uses: KirillBaranov/kb-labs-devkit/.github/actions/setup-node-pnpm@main
+        with:
+          node-version: '20'
+
       - run: pnpm i --frozen-lockfile
       - run: pnpm build || true
       - run: pnpm test -- --run

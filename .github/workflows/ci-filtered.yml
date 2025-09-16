@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       filter:
-        description: pnpm --filter target
+        description: pnpm --filter target (e.g. "--filter @kb-labs/cli")
         required: true
         type: string
       node-version:
@@ -17,16 +17,14 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
+      - uses: KirillBaranov/kb-labs-devkit/.github/actions/setup-node-pnpm@main
         with:
           node-version: ${{ inputs['node-version'] }}
-          cache: pnpm
 
       - run: pnpm i --frozen-lockfile
       - run: pnpm ${{ inputs.filter }} run lint
