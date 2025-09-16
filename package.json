@@ -1,33 +1,33 @@
 {
-          "name": "@kb-labs/devkit",
-          "version": "0.1.0",
-          "private": true,
-          "type": "module",
-          "description": "Shared developer toolkit for KB Labs projects: TS/ESLint/Prettier/Vitest/Tsup presets and reusable GitHub Actions.",
-          "main": "./index.js",
-          "files": [
-                    "tsconfig",
-                    "eslint",
-                    "prettier",
-                    "vitest",
-                    "tsup",
-                    ".github",
-                    "bin"
-          ],
-          "scripts": {
-                    "clean": "rimraf dist",
-                    "build": "echo \"@kb-labs/devkit: nothing to build\"",
-                    "test": "vitest run"
-          },
-          "devDependencies": {
-                    "eslint": "^9.9.0",
-                    "prettier": "^3.3.3",
-                    "rimraf": "^6.0.1",
-                    "tsup": "^8.5.0",
-                    "typescript": "^5.6.3",
-                    "vitest": "^2.1.4",
-                    "@typescript-eslint/eslint-plugin": "^8.6.0",
-                    "@typescript-eslint/parser": "^8.6.0"
-          },
-          "packageManager": "pnpm@9.11.0+sha512.0a203ffaed5a3f63242cd064c8fb5892366c103e328079318f78062f24ea8c9d50bc6a47aa3567cabefd824d170e78fa2745ed1f16b132e16436146b7688f19b"
+  "name": "@kb-labs/devkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared developer toolkit for KB Labs projects: TS/ESLint/Prettier/Vitest/Tsup presets and reusable GitHub Actions.",
+  "main": "./index.js",
+  "files": [
+    "tsconfig",
+    "eslint",
+    "prettier",
+    "vitest",
+    "tsup",
+    ".github",
+    "bin"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "echo \"@kb-labs/devkit: nothing to build\"",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4",
+    "@typescript-eslint/eslint-plugin": "^8.6.0",
+    "@typescript-eslint/parser": "^8.6.0"
+  },
+  "packageManager": "pnpm@9.11.0+sha512.0a203ffaed5a3f63242cd064c8fb5892366c103e328079318f78062f24ea8c9d50bc6a47aa3567cabefd824d170e78fa2745ed1f16b132e16436146b7688f19b"
 }
