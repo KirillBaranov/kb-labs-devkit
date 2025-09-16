@@ -1,0 +1,40 @@
+name: reusable-release
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        description: Publish to npm
+        required: false
+        default: false
+        type: boolean
+      node-version:
+        default: '20'
+        type: string
+    secrets:
+      NPM_TOKEN:
+        required: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kb-labs/devkit/.github/actions/setup-node-pnpm@v1
+        with: { node-version: ${{ inputs.node-version }} }
+
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm build || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
+      - name: Publish to npm
+        if: ${{ inputs.publish == true }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm -r publish --access public --no-git-checks

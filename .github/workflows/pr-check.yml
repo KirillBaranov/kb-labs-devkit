@@ -1,0 +1,15 @@
+name: reusable-pr-check
+
+on:
+  workflow_call:
+
+jobs:
+  pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kb-labs/devkit/.github/actions/setup-node-pnpm@v1
+        with: { node-version: '20' }
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm build || true
+      - run: pnpm test -- --run

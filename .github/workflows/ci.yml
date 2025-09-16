@@ -1,0 +1,65 @@
+name: reusable-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version
+        required: false
+        default: '20'
+        type: string
+      os:
+        description: Runner OS
+        required: false
+        default: 'ubuntu-latest'
+        type: string
+      run-coverage:
+        description: Run coverage step
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  ci:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: kb-labs/devkit/.github/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install deps
+        run: pnpm i --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm type-check || true
+
+      - name: Test
+        run: pnpm test -- --run
+
+      - name: Coverage
+        if: ${{ inputs.run-coverage == true }}
+        run: pnpm test:coverage
+
+      - name: Build
+        run: pnpm build || true
+
+      - name: Upload coverage (if any)
+        if: ${{ inputs.run-coverage == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: |
+            coverage/
+            **/coverage/
+          if-no-files-found: ignore

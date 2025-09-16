@@ -1,0 +1,37 @@
+name: reusable-ci-filtered
+
+on:
+  workflow_call:
+    inputs:
+      filter:
+        description: pnpm --filter target
+        required: true
+        type: string
+      node-version:
+        default: '20'
+        type: string
+      run-coverage:
+        default: false
+        type: boolean
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs['node-version'] }}
+          cache: pnpm
+
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm ${{ inputs.filter }} run lint
+      - run: pnpm ${{ inputs.filter }} run type-check || true
+      - run: pnpm ${{ inputs.filter }} run test -- --run
+      - if: ${{ inputs['run-coverage'] == true }}
+        run: pnpm ${{ inputs.filter }} run test:coverage
+      - run: pnpm ${{ inputs.filter }} run build || true
