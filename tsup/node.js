@@ -2,16 +2,15 @@ import { defineConfig } from 'tsup'
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  outDir: 'dist',
   format: ['esm'],
-  target: 'node20',
-  dts: true,
+  target: 'es2022',
   sourcemap: true,
   clean: true,
-  splitting: false,
-  minify: false,
+  dts: false,
   treeshake: true,
+  minify: false,
+  outDir: 'dist',
+  splitting: false,
   skipNodeModulesBundle: true,
-  tsconfig: 'tsconfig.json',
   shims: false
 })

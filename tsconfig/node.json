@@ -1,10 +1,9 @@
 {
-                "extends": "./base.json",
-                "compilerOptions": {
-                  "outDir": "dist",
-                  "declaration": true,
-                  "declarationMap": true,
-                  "sourceMap": true
-                },
-                "include": ["src"]
-              }
+  "extends": "./base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src"]
+}

@@ -5,12 +5,19 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     reporters: ['default'],
-    exclude: ['node_modules', 'dist', '**/dist/**'],
+    include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**'
+    ],
     coverage: {
+      enabled: false,
       provider: 'v8',
       all: true,
       reportsDirectory: './coverage',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'lcov'],
       exclude: [
         '**/node_modules/**',
         '**/dist/**',
