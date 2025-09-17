@@ -14,18 +14,18 @@
    export default config
    ```
 
-	2.	Replace tsconfig.json to extend from project base, which extends devkit.
-	3.	Update scripts to use devkit presets:
-	•	build/dev with tsup preset, or local tsup config if entry differs.
-	•	vitest config centralized: vitest -c ../../vitest.config.ts for packages.
-	4.	CI: use reusable workflow from devkit.
+2. Replace tsconfig.json to extend from project base, which extends devkit.
+3. Update scripts to use devkit presets:
+   - build/dev with tsup preset, or local tsup config if entry differs.
+   - vitest config centralized: vitest -c ../../vitest.config.ts for packages.
+4. CI: use reusable workflow from devkit.
 
-Validate
-	•	pnpm install
-	•	pnpm lint && pnpm type-check
-	•	pnpm -r run test
-	•	pnpm -r run build
+## Validate
+- pnpm install
+- pnpm lint && pnpm type-check
+- pnpm -r run test
+- pnpm -r run build
 
-Notes
-	•	Prefer root vitest config (avoid TS configs under pure ESM).
-	•	Avoid deep imports; ensure “exports” are respected.
+## Notes
+- Prefer root vitest config (avoid TS configs under pure ESM).
+- Avoid deep imports; ensure "exports" are respected.
