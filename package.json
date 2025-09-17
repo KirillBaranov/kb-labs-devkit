@@ -18,10 +18,18 @@
   ],
   "exports": {
     "./tsconfig/": "./tsconfig/",
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/cli.json": "./tsconfig/cli.json",
+    "./tsconfig/lib.json": "./tsconfig/lib.json",
+    "./tsconfig/node.json": "./tsconfig/node.json",
     "./eslint/": "./eslint/",
+    "./eslint/node.js": "./eslint/node.js",
     "./prettier/": "./prettier/",
+    "./prettier/index.json": "./prettier/index.json",
     "./vitest/": "./vitest/",
+    "./vitest/node.js": "./vitest/node.js",
     "./tsup/": "./tsup/",
+    "./tsup/node.js": "./tsup/node.js",
     "./agents/": "./agents/",
     "./cursorrules": "./.cursorrules",
     "./AGENTS.md": "./AGENTS.md"
