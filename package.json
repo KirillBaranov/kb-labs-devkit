@@ -13,6 +13,7 @@
     "vitest",
     "tsup",
     ".github",
+    ".vscode",
     "bin",
     "AGENTS.md"
   ],
