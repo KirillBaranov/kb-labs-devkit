@@ -10,6 +10,33 @@ A cohesive set of presets and configurations for the `@kb-labs` ecosystem: TypeS
 - **Vitest**: a base test/coverage profile with lib/node overlays.
 - **Tsup**: standard builds for libraries and Node services.
 - **GitHub Actions**: reusable CI/PR/Release workflows.
+- **AI Agents**: standardized Cursor agents for common development tasks.
+
+## AI Agents
+
+This DevKit includes pre-configured AI agents that can be synced into any KB Labs project. These agents are opinionated around KB Labs workflows (pnpm, devkit presets, monorepo). Outside this ecosystem, adapt accordingly.
+
+| Agent              | Purpose                                                        |
+|--------------------|----------------------------------------------------------------|
+| **DevKit Maintainer** | Enforce unified tooling (tsconfig, eslint, prettier, vitest, tsup, CI) |
+| **Test Generator**    | Generate and maintain pragmatic unit tests                    |
+| **Docs Drafter**      | Draft and update README/CONTRIBUTING/ADR docs                 |
+| **Release Manager**   | Prepare release plans, changelog, and GitHub releases         |
+
+Each agent includes:
+- **Prompt**: AI instructions and context
+- **Runbook**: step-by-step procedures
+- **Context**: file patterns and permissions
+
+To sync agents into your project:
+```bash
+# Copy agent definitions from this DevKit
+pnpm agents:sync
+```
+
+They are designed for Cursor AI agents, but can also be adapted for GitHub Copilot Chat or other IDE assistants.
+
+See [`AGENTS.md`](./AGENTS.md) for detailed agent documentation.
 
 ## Install
 

@@ -36,8 +36,36 @@ pnpm format        # run Prettier write mode (if defined in consumer)
 - `prettier/index.json` — Prettier config
 - `vitest/*` — Vitest base and overlays (lib/node)
 - `tsup/*` — Tsup configs (lib/node)
+- `agents/*` — AI agent definitions (prompts, runbooks, context)
 - `.github/workflows/*` — Reusable GitHub workflows
 - `.github/actions/setup-node-pnpm` — Reusable action for Node+pnpm setup
+
+## AI Agents
+
+This DevKit includes standardized AI agents for common development tasks. Each agent is defined in the `agents/` directory with:
+
+- **`prompt.md`** — AI instructions and context
+- **`runbook.md`** — step-by-step procedures  
+- **`context.globs`** — file patterns for context (optional)
+- **`permissions.yml`** — access permissions (optional)
+
+### Available Agents
+
+- **DevKit Maintainer** (`agents/devkit-maintainer/`) — Enforces unified tooling across projects
+- **Test Generator** (`agents/test-generator/`) — Generates and maintains unit tests
+- **Docs Drafter** (`agents/docs-drafter/`) — Drafts and updates documentation
+- **Release Manager** (`agents/release-manager/`) — Manages releases and changelogs
+
+### Working with Agents
+
+When contributing to agent definitions:
+- Keep prompts clear and actionable
+- Update runbooks when procedures change
+- Test agent prompts in real scenarios
+- Maintain consistency across agent styles
+- Always re-sync agents before major contributions (`pnpm agents:sync`). This ensures consistent prompts and permissions across repos.
+
+See [`AGENTS.md`](./AGENTS.md) for detailed agent documentation.
 
 ## Branching model
 - `main` is the default branch.
