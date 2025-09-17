@@ -31,11 +31,11 @@ pnpm format        # run Prettier write mode (if defined in consumer)
 > Note: Some scripts (like `type-check`, `test:coverage`) are referenced inside reusable workflows for consumer repos. They may be optional or no-op here.
 
 ## Project structure
-- `tsconfig/*` — TypeScript configs (base/lib/node/cli)
-- `eslint/*` — ESLint presets (base/lib/node/cli)
+- `tsconfig/*` — TypeScript configs (base/node with NodeNext)
+- `eslint/*` — ESLint 9 flat config presets (node.js)
 - `prettier/index.json` — Prettier config
-- `vitest/*` — Vitest base and overlays (lib/node)
-- `tsup/*` — Tsup configs (lib/node)
+- `vitest/*` — Vitest configs in JS format (node.js)
+- `tsup/*` — Tsup configs in JS format (node.js)
 - `agents/*` — AI agent definitions (prompts, runbooks, context)
 - `.github/workflows/*` — Reusable GitHub workflows
 - `.github/actions/setup-node-pnpm` — Reusable action for Node+pnpm setup
@@ -111,12 +111,29 @@ jobs:
 
 ## Code style
 - ESM-first, Node 20 as baseline runtime.
+- All presets use ESM format (JS files for easy importing from TS configs).
+- ESLint 9 flat config format.
+- TypeScript with NodeNext module resolution.
 - Follow ESLint and Prettier presets from this repo whenever possible.
 - Prefer explicit, readable code over clever shortcuts.
 
 ## Security
 - Do not commit secrets. Use GitHub Environments/Secrets.
 - Report vulnerabilities privately to the maintainers.
+
+## Migration notes
+
+### From CJS to ESM (v0.1.0+)
+- ESLint configs now use flat config format (ESLint 9)
+- All presets are in JS format for easy importing from TS configs
+- TypeScript configs use NodeNext module resolution
+- Tsup builds ESM-only by default
+
+### Breaking changes
+- ESLint: `.eslintrc.cjs` → `eslint.config.js`
+- Vitest: `.ts` configs → `.js` configs
+- Tsup: `.ts` configs → `.js` configs
+- TypeScript: `module: "ESNext"` → `module: "NodeNext"`
 
 ## Governance
 - Maintainers have final review authority for presets and workflows.

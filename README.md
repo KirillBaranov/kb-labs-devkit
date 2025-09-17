@@ -48,58 +48,7 @@ npm i -D @kb-labs/devkit
 
 ## Quick start
 
-- **Library project** (TS + Tsup + Vitest + ESLint + Prettier)
-  - `tsconfig.json`:
-
-```json
-{
-  "extends": "@kb-labs/devkit/tsconfig/lib.json"
-}
-```
-
-  - `tsup.config.ts`:
-
-```ts
-import config from '@kb-labs/devkit/tsup/lib'
-export default config
-```
-
-  - `vitest.config.ts`:
-
-```ts
-import config from '@kb-labs/devkit/vitest/lib'
-export default config
-```
-
-  - `.eslintrc.cjs`:
-
-```js
-module.exports = {
-  extends: [require.resolve('@kb-labs/devkit/eslint/lib.cjs')],
-}
-```
-
-  - `.prettierrc.json` (optional – you can also reference the preset directly):
-
-```json
-"@kb-labs/devkit/prettier/index.json"
-```
-
-  - `package.json` (example):
-
-```json
-{
-  "type": "module",
-  "scripts": {
-    "build": "tsup",
-    "lint": "eslint .",
-    "test": "vitest",
-    "format": "prettier -w ."
-  }
-}
-```
-
-- **Node service / CLI**
+- **Node project** (TS + Tsup + Vitest + ESLint + Prettier)
   - `tsconfig.json`:
 
 ```json
@@ -111,46 +60,68 @@ module.exports = {
   - `tsup.config.ts`:
 
 ```ts
-import config from '@kb-labs/devkit/tsup/node'
+import config from '@kb-labs/devkit/tsup/node.js'
 export default config
 ```
 
   - `vitest.config.ts`:
 
 ```ts
-import config from '@kb-labs/devkit/vitest/node'
+import config from '@kb-labs/devkit/vitest/node.js'
 export default config
 ```
 
-  - `.eslintrc.cjs` (service):
+  - `eslint.config.js` (ESLint 9 flat config):
 
 ```js
-module.exports = {
-  extends: [require.resolve('@kb-labs/devkit/eslint/node.cjs')],
-}
+import config from '@kb-labs/devkit/eslint/node.js'
+export default config
 ```
 
-  - `.eslintrc.cjs` (CLI):
+  - `.prettierrc.json`:
 
-```js
-module.exports = {
-  extends: [require.resolve('@kb-labs/devkit/eslint/cli.cjs')],
+```json
+"@kb-labs/devkit/prettier/index.json"
+```
+
+  - `package.json` (example):
+
+```json
+{
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "eslint .",
+    "test": "vitest",
+    "format": "prettier -w ."
+  }
 }
 ```
 
 ## Preset details
 
 ### TypeScript (`tsconfig`)
-- `base.json`: strict base (ES2022, NodeNext, strict typing).
-- `lib.json`: library – declarations, source maps, `include: ["src"]`.
-- `node.json`: Node service – declarations, source maps, `include: ["src", "bin"]`.
-- `cli.json`: CLI – declarations, `include: ["src"]`.
+- `base.json`: strict base (ES2022, NodeNext, strict typing, isolatedModules).
+- `node.json`: Node service – declarations, source maps, `include: ["src"]`.
+
+All configs use `module: "NodeNext"` and `moduleResolution: "NodeNext"` for proper ESM support.
 
 ### ESLint
-- `eslint/base.cjs`: base TypeScript rules.
-- `eslint/lib.cjs`: library flavor (allows `any` for gradual adoption).
-- `eslint/node.cjs`: Node service profile.
-- `eslint/cli.cjs`: CLI profile (allows `console`, `process.exit`).
+- `eslint/node.js`: ESLint 9 flat config with TypeScript support.
+
+Features:
+- Uses `typescript-eslint` recommended rules
+- Ignores `dist/`, `coverage/`, `node_modules/`, `.yalc/`
+- Allows unused variables with `_` prefix
+- Consistent type imports
 
 Run:
 ```bash
@@ -166,8 +137,14 @@ pnpm prettier -c .
 ```
 
 ### Tsup
-- `tsup/lib.ts`: library build (ESM, dts, sourcemap, treeshake).
-- `tsup/node.ts`: Node service build (target node20, ESM, dts, sourcemap).
+- `tsup/node.js`: ESM-only build (target ES2022, sourcemap, clean, treeshake).
+
+Features:
+- ESM format only
+- ES2022 target
+- Source maps enabled
+- Tree shaking enabled
+- Clean output directory
 
 Run:
 ```bash
@@ -175,9 +152,13 @@ pnpm tsup
 ```
 
 ### Vitest
-- `vitest/base.ts`: base tests + coverage (V8, strict thresholds).
-- `vitest/lib.ts`: library overlay.
-- `vitest/node.ts`: Node overlay.
+- `vitest/node.js`: Node environment with coverage support.
+
+Features:
+- Node environment
+- Coverage with V8 provider (disabled by default)
+- Excludes `node_modules/`, `dist/`, etc.
+- Strict coverage thresholds when enabled
 
 Run:
 ```bash
@@ -230,7 +211,9 @@ jobs:
 ## FAQ
 - **Can I override rules?** — Yes. Extend locally and add your overrides on top.
 - **How do I update?** — Bump `@kb-labs/devkit` and review the release notes/Changelog.
-- **Need CommonJS?** — Presets assume ESM. For CJS, add dual builds/transpilation in your project.
+- **ESLint 9 flat config?** — Yes, all ESLint configs use the new flat config format.
+- **ESM only?** — Yes, all presets assume ESM. For CJS, add dual builds/transpilation in your project.
+- **TypeScript errors with module resolution?** — Ensure you're using `module: "NodeNext"` in your tsconfig.
 
 ## License
 MIT. See `LICENSE`.
