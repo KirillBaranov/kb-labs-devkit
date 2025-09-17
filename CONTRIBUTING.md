@@ -31,7 +31,7 @@ pnpm format        # run Prettier write mode (if defined in consumer)
 > Note: Some scripts (like `type-check`, `test:coverage`) are referenced inside reusable workflows for consumer repos. They may be optional or no-op here.
 
 ## Project structure
-- `tsconfig/*` — TypeScript configs (base/node with NodeNext)
+- `tsconfig/*` — TypeScript configs (base/cli/lib/node with NodeNext)
 - `eslint/*` — ESLint 9 flat config presets (node.js)
 - `prettier/index.json` — Prettier config
 - `vitest/*` — Vitest configs in JS format (node.js)
@@ -39,6 +39,8 @@ pnpm format        # run Prettier write mode (if defined in consumer)
 - `agents/*` — AI agent definitions (prompts, runbooks, context)
 - `.github/workflows/*` — Reusable GitHub workflows
 - `.github/actions/setup-node-pnpm` — Reusable action for Node+pnpm setup
+
+**Note:** All presets are available both as folder imports (`@kb-labs/devkit/tsconfig/`) and specific file imports (`@kb-labs/devkit/tsconfig/node.json`) for maximum flexibility.
 
 ## AI Agents
 

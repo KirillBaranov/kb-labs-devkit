@@ -109,10 +109,27 @@ export default config
 ## Preset details
 
 ### TypeScript (`tsconfig`)
-- `base.json`: strict base (ES2022, NodeNext, strict typing, isolatedModules).
-- `node.json`: Node service – declarations, source maps, `include: ["src"]`.
+Available configs:
+- `base.json`: strict base (ES2022, NodeNext, strict typing, isolatedModules)
+- `cli.json`: CLI application preset
+- `lib.json`: library preset  
+- `node.json`: Node service – declarations, source maps, `include: ["src"]`
 
 All configs use `module: "NodeNext"` and `moduleResolution: "NodeNext"` for proper ESM support.
+
+**Usage:**
+```json
+{
+  "extends": "@kb-labs/devkit/tsconfig/node.json"
+}
+```
+
+Or import specific files:
+```json
+{
+  "extends": "@kb-labs/devkit/tsconfig/base.json"
+}
+```
 
 ### ESLint
 - `eslint/node.js`: ESLint 9 flat config with TypeScript support.
@@ -214,6 +231,7 @@ jobs:
 - **ESLint 9 flat config?** — Yes, all ESLint configs use the new flat config format.
 - **ESM only?** — Yes, all presets assume ESM. For CJS, add dual builds/transpilation in your project.
 - **TypeScript errors with module resolution?** — Ensure you're using `module: "NodeNext"` in your tsconfig.
+- **Importing specific files vs folders?** — Both are supported. Use `@kb-labs/devkit/tsconfig/node.json` for specific files or `@kb-labs/devkit/tsconfig/` for folder imports.
 
 ## License
 MIT. See `LICENSE`.
