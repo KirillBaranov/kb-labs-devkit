@@ -6,6 +6,8 @@
   "description": "Shared developer toolkit for KB Labs projects: TS/ESLint/Prettier/Vitest/Tsup presets and reusable GitHub Actions.",
   "main": "./index.js",
   "files": [
+    "agents",
+    "cursorrules",
     "tsconfig",
     "eslint",
     "prettier",
@@ -14,6 +16,10 @@
     ".github",
     "bin"
   ],
+  "exports": {
+    "./agents/*": "./agents/*",
+    "./cursorrules": "./.cursorrules"
+  },
   "scripts": {
     "clean": "rimraf dist",
     "build": "echo \"@kb-labs/devkit: nothing to build\"",
