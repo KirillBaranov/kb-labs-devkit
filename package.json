@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "description": "Shared developer toolkit for KB Labs projects: TS/ESLint/Prettier/Vitest/Tsup presets and reusable GitHub Actions.",
-  "main": "./index.js",
   "files": [
     "agents",
     "cursorrules",
@@ -14,11 +13,18 @@
     "vitest",
     "tsup",
     ".github",
-    "bin"
+    "bin",
+    "AGENTS.md"
   ],
   "exports": {
+    "./tsconfig/*": "./tsconfig/*",
+    "./eslint/*": "./eslint/*",
+    "./prettier/*": "./prettier/*",
+    "./vitest/*": "./vitest/*",
+    "./tsup/*": "./tsup/*",
     "./agents/*": "./agents/*",
-    "./cursorrules": "./.cursorrules"
+    "./cursorrules": "./.cursorrules",
+    "./AGENTS.md": "./AGENTS.md"
   },
   "scripts": {
     "clean": "rimraf dist",
