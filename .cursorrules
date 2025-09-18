@@ -8,6 +8,8 @@ allow:
   - read: "package.json"
   - read: "tsconfig*.json"
   - read: ".github/**/*"
+  - read: ".cursorrules"
+  - read: "agents/**/*"
   - write: "src/**/*"
   - write: "packages/**/*"
   - write: "apps/**/*"
