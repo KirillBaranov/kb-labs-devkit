@@ -25,7 +25,11 @@ runs:
 
     - name: Enable Corepack
       shell: bash
-      run: corepack enable
+      run: |
+        corepack enable
+        # Ensure corepack directories are in PATH
+        echo "$HOME/.local/share/pnpm" >> $GITHUB_PATH
+        echo "$HOME/.local/share/node" >> $GITHUB_PATH
 
     - name: Resolve PNPM version & activate via Corepack
       id: pnpm
@@ -37,8 +41,16 @@ runs:
         if [ -z "$VER" ]; then VER="${{ inputs.fallback-pnpm-version }}"; fi
         echo "Using pnpm@$VER"
         corepack prepare "pnpm@$VER" --activate
-        pnpm -v
 
-    - name: Verify pnpm in PATH
+    - name: Verify pnpm installation
       shell: bash
-      run: which pnpm && pnpm -v
+      run: |
+        if command -v pnpm >/dev/null 2>&1; then
+          echo "✅ pnpm is available: $(which pnpm)"
+          echo "✅ pnpm version: $(pnpm -v)"
+        else
+          echo "❌ pnpm not found in PATH"
+          echo "PATH: $PATH"
+          echo "Available in corepack dir: $(ls -la ~/.local/share/pnpm/ 2>/dev/null || echo 'Directory not found')"
+          exit 1
+        fi
