@@ -11,6 +11,7 @@ A cohesive set of presets and configurations for the `@kb-labs` ecosystem: TypeS
 - **Tsup**: standard builds for libraries and Node services.
 - **GitHub Actions**: reusable CI/PR/Release workflows.
 - **AI Agents**: standardized Cursor agents for common development tasks.
+- **Fixtures**: validation fixtures to ensure DevKit changes don't break downstream consumers.
 
 ## AI Agents
 
@@ -219,11 +220,35 @@ jobs:
 
 > Note: when using `workflow_call`/`uses`, ensure your repo has access to the source repo and required secrets if the workflow needs them.
 
+## Validation Fixtures
+
+This DevKit includes fixtures (`/fixtures/*`) that act as minimal, real-world consumer projects to validate DevKit changes:
+
+- **`fixtures/lib`**: A simple TypeScript library using DevKit presets (TS, ESLint, Prettier, Vitest, Tsup)
+- **Future fixtures**: CLI apps, Vue apps, and other common patterns
+
+Each fixture has its own `package.json` and extends DevKit via imports/extends (no relative paths).
+
+### Fixture Scripts
+
+```bash
+pnpm fixtures:bootstrap  # Install fixture dependencies
+pnpm fixtures:clean      # Remove build artifacts
+pnpm fixtures:lint       # Run ESLint in fixtures
+pnpm fixtures:type-check # Run TypeScript type checks
+pnpm fixtures:test       # Run Vitest tests
+pnpm fixtures:build      # Build with tsup + emit types
+pnpm fixtures:check      # Run all validation checks
+```
+
+The `fixtures:check` script runs all validation steps and is used in CI to ensure DevKit changes don't break downstream consumers.
+
 ## Use cases
 - Bootstrap new packages/services without copying configs.
 - Enforce consistent style and rules across the ecosystem.
 - Provide a single minimal CI for PRs and releases.
 - Migrate existing projects to shared presets with minimal effort.
+- Validate DevKit changes against real-world usage patterns.
 
 ## FAQ
 - **Can I override rules?** — Yes. Extend locally and add your overrides on top.

@@ -26,6 +26,15 @@ pnpm lint          # run ESLint
 pnpm test          # run Vitest
 yarn test:coverage # if a consumer repo uses coverage thresholds
 pnpm format        # run Prettier write mode (if defined in consumer)
+
+# Fixture validation scripts
+pnpm fixtures:bootstrap  # install fixture dependencies
+pnpm fixtures:clean      # remove build artifacts
+pnpm fixtures:lint       # run ESLint in fixtures
+pnpm fixtures:type-check # run TypeScript type checks
+pnpm fixtures:test       # run Vitest tests
+pnpm fixtures:build      # build with tsup + emit types
+pnpm fixtures:check      # run all validation checks
 ```
 
 > Note: Some scripts (like `type-check`, `test:coverage`) are referenced inside reusable workflows for consumer repos. They may be optional or no-op here.
@@ -37,6 +46,7 @@ pnpm format        # run Prettier write mode (if defined in consumer)
 - `vitest/*` — Vitest configs in JS format (node.js)
 - `tsup/*` — Tsup configs in JS format (node.js)
 - `agents/*` — AI agent definitions (prompts, runbooks, context)
+- `fixtures/*` — Validation fixtures for testing DevKit changes
 - `.github/workflows/*` — Reusable GitHub workflows
 - `.github/actions/setup-node-pnpm` — Reusable action for Node+pnpm setup
 
@@ -81,6 +91,7 @@ See [`AGENTS.md`](./AGENTS.md) for detailed agent documentation.
 - Run `pnpm lint` and `pnpm test` locally before opening a PR.
 - Keep unit tests deterministic and fast.
 - For configuration changes, add minimal sample usage in README when relevant.
+- **Always run `pnpm fixtures:check` before opening a PR** to ensure DevKit changes don't break downstream consumers.
 
 ## Pull requests
 - Keep PRs focused and under ~300 lines where possible.
