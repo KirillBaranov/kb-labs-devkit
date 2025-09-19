@@ -23,35 +23,55 @@
     "./tsconfig/cli.json": "./tsconfig/cli.json",
     "./tsconfig/lib.json": "./tsconfig/lib.json",
     "./tsconfig/node.json": "./tsconfig/node.json",
+    "./tsconfig/test.json": "./tsconfig/test.json",
     "./eslint/": "./eslint/",
     "./eslint/node.js": "./eslint/node.js",
+    "./eslint/node": "./eslint/node.js",
     "./prettier/": "./prettier/",
     "./prettier/index.json": "./prettier/index.json",
     "./vitest/": "./vitest/",
     "./vitest/node.js": "./vitest/node.js",
+    "./vitest/node": "./vitest/node.js",
     "./tsup/": "./tsup/",
     "./tsup/node.js": "./tsup/node.js",
+    "./tsup/node": "./tsup/node.js",
     "./agents/": "./agents/",
     "./cursorrules": "./.cursorrules",
+    "./.vscode/settings.json": "./.vscode/settings.json",
     "./AGENTS.md": "./AGENTS.md"
   },
   "scripts": {
     "clean": "rimraf dist",
     "build": "echo \"@kb-labs/devkit: nothing to build\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "fixtures:bootstrap": "pnpm -C fixtures/lib i",
+    "fixtures:clean": "pnpm -C fixtures/lib clean",
+    "fixtures:lint": "pnpm -C fixtures/lib lint",
+    "fixtures:type-check": "pnpm -C fixtures/lib type-check",
+    "fixtures:test": "pnpm -C fixtures/lib test",
+    "fixtures:build": "pnpm -C fixtures/lib build",
+    "fixtures:check": "pnpm run fixtures:lint && pnpm run fixtures:type-check && pnpm run fixtures:test && pnpm run fixtures:build"
   },
   "peerDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.8.0",
-    "@typescript-eslint/parser": "^8.8.0",
-    "eslint": "^9.16.0",
+    "eslint": "^9.35.0",
     "tsup": "^8.5.0",
-    "typescript": "^5.6.3",
-    "typescript-eslint": "^8.8.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.0",
     "vitest": "^3.2.4"
   },
+  "peerDependenciesMeta": {
+    "eslint-plugin-import": {
+      "optional": true
+    },
+    "eslint-import-resolver-typescript": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-import-resolver-typescript": "^3.6.1"
+  },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.44.0",
-    "@typescript-eslint/parser": "^8.44.0",
     "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.35.0",
     "prettier": "^3.6.2",
@@ -61,5 +81,9 @@
     "typescript-eslint": "^8.44.0",
     "vitest": "^3.2.4"
   },
-  "packageManager": "pnpm@9.11.0+sha512.0a203ffaed5a3f63242cd064c8fb5892366c103e328079318f78062f24ea8c9d50bc6a47aa3567cabefd824d170e78fa2745ed1f16b132e16436146b7688f19b"
+  "packageManager": "pnpm@9.11.0+sha512.0a203ffaed5a3f63242cd064c8fb5892366c103e328079318f78062f24ea8c9d50bc6a47aa3567cabefd824d170e78fa2745ed1f16b132e16436146b7688f19b",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.11.0"
+  }
 }
