@@ -3,17 +3,11 @@ description: Install Node and pnpm with cache
 
 inputs:
   node-version:
-    description: Node.js version
-    required: false
     default: '20'
   package-json-path:
-    description: Path to the repository package.json
-    required: false
     default: 'package.json'
   fallback-pnpm-version:
-    description: Fallback PNPM if packageManager is missing
-    required: false
-    default: '9.11.0'
+    default: '9.15.0'
 
 runs:
   using: composite
@@ -21,36 +15,33 @@ runs:
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
-        cache: pnpm
+        # cache: pnpm   ← УДАЛИТЬ
 
     - name: Enable Corepack
       shell: bash
       run: |
         corepack enable
-        # Ensure corepack directories are in PATH
-        echo "$HOME/.local/share/pnpm" >> $GITHUB_PATH
-        echo "$HOME/.local/share/node" >> $GITHUB_PATH
+        echo "$HOME/.local/share/pnpm" >> "$GITHUB_PATH"
+        echo "$HOME/.local/share/node" >> "$GITHUB_PATH"
 
     - name: Resolve PNPM version & activate via Corepack
-      id: pnpm
       shell: bash
       run: |
         set -euo pipefail
         FILE="${{ inputs.package-json-path }}"
         VER=$(node -e "try{const pm=require('${FILE}').packageManager||''; const v=(pm.split('@')[1]||'').split('+')[0]; process.stdout.write(v);}catch(e){process.stdout.write('');}")
-        if [ -z "$VER" ]; then VER="${{ inputs.fallback-pnpm-version }}"; fi
+        [ -z "$VER" ] && VER="${{ inputs.fallback-pnpm-version }}"
         echo "Using pnpm@$VER"
         corepack prepare "pnpm@$VER" --activate
+        pnpm -v
 
-    - name: Verify pnpm installation
+    - name: (opt) Cache pnpm store
+      uses: actions/cache@v4
+      with:
+        path: ~/.pnpm-store
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-
+    - name: (opt) Configure pnpm store
       shell: bash
-      run: |
-        if command -v pnpm >/dev/null 2>&1; then
-          echo "✅ pnpm is available: $(which pnpm)"
-          echo "✅ pnpm version: $(pnpm -v)"
-        else
-          echo "❌ pnpm not found in PATH"
-          echo "PATH: $PATH"
-          echo "Available in corepack dir: $(ls -la ~/.local/share/pnpm/ 2>/dev/null || echo 'Directory not found')"
-          exit 1
-        fi
+      run: pnpm config set store-dir ~/.pnpm-store
