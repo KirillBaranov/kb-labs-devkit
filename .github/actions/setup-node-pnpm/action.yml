@@ -1,11 +1,15 @@
 name: Setup Node & pnpm
-description: Install pnpm and setup Node with cache
+description: Install Node and pnpm with cache
 
 inputs:
   node-version:
     description: Node.js version
     required: false
     default: '20'
+  package-json-path:
+    description: Path to the repository package.json
+    required: false
+    default: 'package.json'
 
 runs:
   using: composite
@@ -15,8 +19,18 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: pnpm
 
+    # safety: иногда помогает, если runner без corepack
+    - name: Enable Corepack
+      shell: bash
+      run: corepack enable
+
+    # берем версию pnpm из packageManager в package.json
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
       with:
         run_install: false
-        package_json_path: ./package.json
+        package_json_path: ${{ inputs.package-json-path }}
+
+    - name: Verify pnpm
+      shell: bash
+      run: pnpm -v
