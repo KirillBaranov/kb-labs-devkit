@@ -44,13 +44,11 @@
     "clean": "rimraf dist",
     "build": "echo \"@kb-labs/devkit: nothing to build\"",
     "test": "vitest run",
-    "fixtures:bootstrap": "pnpm -C fixtures/lib i",
-    "fixtures:clean": "pnpm -C fixtures/lib clean",
-    "fixtures:lint": "pnpm -C fixtures/lib lint",
-    "fixtures:type-check": "pnpm -C fixtures/lib type-check",
-    "fixtures:test": "pnpm -C fixtures/lib test",
-    "fixtures:build": "pnpm -C fixtures/lib build",
-    "fixtures:check": "pnpm run fixtures:lint && pnpm run fixtures:type-check && pnpm run fixtures:test && pnpm run fixtures:build"
+    "fixtures": "node scripts/fixtures.js",
+    "fixtures:check": "node scripts/fixtures.js all check",
+    "fixtures:lint": "node scripts/fixtures.js all lint",
+    "fixtures:test": "node scripts/fixtures.js all test",
+    "fixtures:build": "node scripts/fixtures.js all build"
   },
   "peerDependencies": {
     "eslint": "^9.35.0",
