@@ -12,6 +12,7 @@ A cohesive set of presets and configurations for the `@kb-labs` ecosystem: TypeS
 - **GitHub Actions**: reusable CI/PR/Release workflows.
 - **AI Agents**: standardized Cursor agents for common development tasks.
 - **Fixtures**: validation fixtures to ensure DevKit changes don't break downstream consumers.
+- **Scripts**: automated fixture management for testing all presets.
 
 ## AI Agents
 
@@ -224,24 +225,48 @@ jobs:
 
 This DevKit includes fixtures (`/fixtures/*`) that act as minimal, real-world consumer projects to validate DevKit changes:
 
-- **`fixtures/lib`**: A simple TypeScript library using DevKit presets (TS, ESLint, Prettier, Vitest, Tsup)
-- **Future fixtures**: CLI apps, Vue apps, and other common patterns
+- **`fixtures/lib`**: A simple TypeScript library using DevKit presets
+- **`fixtures/cli`**: A CLI application with Commander.js
+- **`fixtures/web`**: A web application with DOM API and fetch
+- **`fixtures/monorepo`**: A monorepo with shared library and app packages
 
 Each fixture has its own `package.json` and extends DevKit via imports/extends (no relative paths).
 
-### Fixture Scripts
+### Fixture Management
+
+Use the automated fixture management script:
 
 ```bash
-pnpm fixtures:bootstrap  # Install fixture dependencies
-pnpm fixtures:clean      # Remove build artifacts
-pnpm fixtures:lint       # Run ESLint in fixtures
-pnpm fixtures:type-check # Run TypeScript type checks
-pnpm fixtures:test       # Run Vitest tests
-pnpm fixtures:build      # Build with tsup + emit types
-pnpm fixtures:check      # Run all validation checks
+# Check all fixtures (recommended for CI)
+pnpm fixtures:check
+
+# Check specific fixture
+pnpm fixtures lib check
+pnpm fixtures cli test
+pnpm fixtures web build
+pnpm fixtures monorepo lint
+
+# Run specific action on all fixtures
+pnpm fixtures:lint   # Lint all fixtures
+pnpm fixtures:test   # Test all fixtures
+pnpm fixtures:build  # Build all fixtures
+
+# Show help
+pnpm fixtures
 ```
 
 The `fixtures:check` script runs all validation steps and is used in CI to ensure DevKit changes don't break downstream consumers.
+
+See [`scripts/README.md`](./scripts/README.md) for detailed fixture management documentation.
+
+## Architecture Decision Records (ADR)
+
+This DevKit follows architectural decision records to document important design decisions:
+
+- **[ADR 0001: Repository Synchronization via DevKit](./docs/adr/0001-repo-synchronization-via-devkit.md)** - Strategy for maintaining consistent tooling across KB Labs projects
+- **[ADR 0002: ESM-only and NodeNext](./docs/adr/0002-esm-only-and-nodenext.md)** - Decision to use ESM-only modules with NodeNext resolution
+- **[ADR 0003: Validation Fixtures Strategy](./docs/adr/0003-validation-fixtures-strategy.md)** - Approach to testing DevKit presets with realistic consumer projects
+- **[ADR 0004: Testing Strategy and Quality Gates](./docs/adr/0004-testing-strategy-and-quality-gates.md)** - Comprehensive testing approach with multiple validation layers
 
 ## Use cases
 - Bootstrap new packages/services without copying configs.
