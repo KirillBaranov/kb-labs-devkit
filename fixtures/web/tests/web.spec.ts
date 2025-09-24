@@ -59,7 +59,7 @@ describe('Web fixture', () => {
     })
 
     it('should add and remove classes', () => {
-      const element = document.createElement('div')
+      const element = DOMUtils.createElement('div')
 
       DOMUtils.addClass(element, 'active')
       expect(element.classList.contains('active')).toBe(true)
