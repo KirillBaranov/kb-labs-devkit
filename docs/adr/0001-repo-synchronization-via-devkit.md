@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2025-09-18
-- **Author:** KB Labs
+- **Author:** KB Labs Team
 
 ## Context
 KB Labs maintains multiple repositories (core, cli, shared, ai-review, templates). They all share non-domain tooling: ESLint/Prettier configs, TS baselines, Vitest presets, Tsup presets, GitHub reusable workflows, Cursor agents, and workspace conventions.

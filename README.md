@@ -267,6 +267,7 @@ This DevKit follows architectural decision records to document important design 
 - **[ADR 0002: ESM-only and NodeNext](./docs/adr/0002-esm-only-and-nodenext.md)** - Decision to use ESM-only modules with NodeNext resolution
 - **[ADR 0003: Validation Fixtures Strategy](./docs/adr/0003-validation-fixtures-strategy.md)** - Approach to testing DevKit presets with realistic consumer projects
 - **[ADR 0004: Testing Strategy and Quality Gates](./docs/adr/0004-testing-strategy-and-quality-gates.md)** - Comprehensive testing approach with multiple validation layers
+- **[ADR 0005: Build & Types Strategy for KB Labs Monorepos](./docs/adr/0005-build-strategy.md)** - Unified approach to build and type generation using tsup instead of separate TSC
 
 ## Use cases
 - Bootstrap new packages/services without copying configs.

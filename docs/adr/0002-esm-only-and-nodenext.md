@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2025-09-18
-- **Author:** KB Labs
+- **Author:** KB Labs Team
 
 ## Context
 Historically, Node.js supported CommonJS (CJS) as the default module format.  
