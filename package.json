@@ -15,10 +15,11 @@
     ".github",
     ".vscode",
     "bin",
+    "sync",
     "AGENTS.md"
   ],
   "bin": {
-    "devkit-sync": "./bin/devkit-sync.mjs"
+    "kb-devkit-sync": "./bin/devkit-sync.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",
@@ -42,7 +43,8 @@
     "./cursorrules": "./.cursorrules",
     "./.vscode/settings.json": "./.vscode/settings.json",
     "./AGENTS.md": "./AGENTS.md",
-    "./bin/devkit-sync.mjs": "./bin/devkit-sync.mjs"
+    "./bin/devkit-sync.mjs": "./bin/devkit-sync.mjs",
+    "./sync": "./sync/index.mjs"
   },
   "scripts": {
     "clean": "rimraf dist",
