@@ -17,6 +17,9 @@
     "bin",
     "AGENTS.md"
   ],
+  "bin": {
+    "devkit-sync": "./bin/devkit-sync.mjs"
+  },
   "exports": {
     "./tsconfig/": "./tsconfig/",
     "./tsconfig/base.json": "./tsconfig/base.json",
@@ -38,7 +41,8 @@
     "./agents/": "./agents/",
     "./cursorrules": "./.cursorrules",
     "./.vscode/settings.json": "./.vscode/settings.json",
-    "./AGENTS.md": "./AGENTS.md"
+    "./AGENTS.md": "./AGENTS.md",
+    "./bin/devkit-sync.mjs": "./bin/devkit-sync.mjs"
   },
   "scripts": {
     "clean": "rimraf dist",

@@ -18,5 +18,6 @@
   // TypeScript: использовать локальную версию в репозитории
   "typescript.tsdk": "node_modules/typescript/lib",
   // Vitest
-  "vitest.enable": true
+  "vitest.enable": true,
+  "vitest.disableWorkspaceWarning": true
 }
