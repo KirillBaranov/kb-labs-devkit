@@ -10,7 +10,7 @@ const __dirname = dirname(__filename);
 const DEVKIT_ROOT = resolve(__dirname, '..'); // .../devkit
 
 // Map of sync targets shipped with DevKit
-const MAP = {
+const BASE_MAP = {
   agents: {
     from: resolve(DEVKIT_ROOT, 'agents'),
     to: (root) => resolve(root, 'kb-labs/agents'),
@@ -27,6 +27,40 @@ const MAP = {
     type: 'file',
   },
 };
+
+function resolveFromDevkit(p) {
+  // absolute path stays absolute; otherwise resolve from DEVKIT_ROOT
+  return p && p.startsWith('/') ? p : resolve(DEVKIT_ROOT, p);
+}
+
+function buildEffectiveMap(projectCfg) {
+  // shallow clone of BASE_MAP with functions preserved
+  const map = Object.fromEntries(Object.entries(BASE_MAP).map(([k, v]) => [k, { ...v }]));
+  const syncCfg = projectCfg?.sync || {};
+
+  // overrides: { targetKey: { from, to, type } }
+  if (syncCfg.overrides && typeof syncCfg.overrides === 'object') {
+    for (const [key, ov] of Object.entries(syncCfg.overrides)) {
+      if (!map[key]) continue; // ignore unknown keys
+      if (ov.from) map[key].from = resolveFromDevkit(String(ov.from));
+      if (ov.to) map[key].to = (root) => resolve(root, String(ov.to));
+      if (ov.type) map[key].type = String(ov.type);
+    }
+  }
+
+  // extra targets: { key: { from, to, type } }
+  if (syncCfg.targets && typeof syncCfg.targets === 'object') {
+    for (const [key, t] of Object.entries(syncCfg.targets)) {
+      if (!t?.from || !t?.to) continue; // must have both
+      map[key] = {
+        from: resolveFromDevkit(String(t.from)),
+        to: (root) => resolve(root, String(t.to)),
+        type: String(t.type || 'dir'),
+      };
+    }
+  }
+  return map;
+}
 
 const log = (...a) => console.log('[devkit-sync]', ...a);
 const warn = (...a) => console.warn('[devkit-sync]', ...a);
@@ -121,9 +155,11 @@ function parseArgs(argv) {
   const check = flags.has('--check');
   const force = flags.has('--force');
   const verbose = flags.has('--verbose');
+  const json = flags.has('--json');
+  const dryRun = flags.has('--dry-run');
   const timeoutMs = Number(kv.get('--timeout') ?? process.env.KB_DEVKIT_SYNC_TIMEOUT_MS ?? 30000);
   const onlyList = kv.get('--only')?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
-  return { help, version, check, force, verbose, timeoutMs, onlyList, positional };
+  return { help, version, check, force, verbose, json, dryRun, timeoutMs, onlyList, positional };
 }
 
 async function readProjectConfig(root) {
@@ -131,11 +167,11 @@ async function readProjectConfig(root) {
   try { return JSON.parse(await readFile(p, 'utf8')); } catch { return {}; }
 }
 
-function resolveTargets({ onlyList, positional, disabledSet }) {
-  const all = Object.keys(MAP).filter(k => !disabledSet.has(k));
+function resolveTargets(effectiveMap, { onlyList, positional, disabledSet }) {
+  const all = Object.keys(effectiveMap).filter(k => !disabledSet.has(k));
   if (onlyList.length === 0 && positional.length === 0) return all;
   const requested = [...onlyList, ...positional].filter(Boolean);
-  return requested.filter(k => MAP[k] && !disabledSet.has(k));
+  return requested.filter(k => effectiveMap[k] && !disabledSet.has(k));
 }
 
 async function writeProvenance(root) {
@@ -151,13 +187,15 @@ async function writeProvenance(root) {
   );
 }
 
-async function runCheck(root, targets, verbose) {
+async function runCheck(root, effectiveMap, targets, verbose) {
+  const details = [];
   const summary = { ok: 0, drift: 0 };
   for (const key of targets) {
-    const { from, to, type } = MAP[key];
+    const { from, to, type } = effectiveMap[key];
     const dst = to(root);
     const res = await comparePaths(from, dst, type);
     const changed = (res.diffs.length + res.onlySrc.length + res.onlyDst.length) > 0;
+    details.push({ key, type, dst, changed, ...res });
     if (changed) {
       summary.drift++;
       log(`drift ${key}:`, JSON.stringify(res, null, 2));
@@ -167,53 +205,65 @@ async function runCheck(root, targets, verbose) {
     }
   }
   log('check done', summary);
-  return summary.drift > 0 ? 2 : 0;
+  return { code: summary.drift > 0 ? 2 : 0, summary, details };
 }
 
-async function runSync(root, targets, force, verbose) {
+async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) {
+  const details = [];
   const summary = { synced: 0, kept: 0, skipped: 0 };
   for (const key of targets) {
-    const { from, to, type } = MAP[key];
+    const { from, to, type } = effectiveMap[key];
     const dst = to(root);
     const srcOk = await exists(from);
     if (!srcOk) {
       summary.skipped++;
+      details.push({ key, action: 'skip', reason: 'source-missing', from, dst });
       warn(`skip ${key} — source not found: ${from}`);
       continue;
     }
     if (!force && await exists(dst)) {
       summary.kept++;
+      details.push({ key, action: 'keep', from, dst });
       if (verbose) log(`keep ${key} — exists: ${dst}`);
       continue;
     }
-    if (type === 'file') await ensureDirForFile(dst);
-    else await mkdir(dst, { recursive: true });
+    if (dryRun) {
+      summary.synced++;
+      details.push({ key, action: 'plan-sync', from, dst, type });
+      log(`[dry-run] ${key} -> ${dst}`);
+      continue;
+    }
+    if (type === 'file') await ensureDirForFile(dst); else await mkdir(dst, { recursive: true });
     await cp(from, dst, { recursive: true, force: true });
     summary.synced++;
+    details.push({ key, action: 'synced', from, dst, type });
     log(`synced ${key} -> ${dst}`);
   }
   await writeProvenance(root);
-  log('sync done', summary, `(force=${force})`);
-  return 0;
+  log('sync done', summary, `(force=${force}, dry-run=${!!dryRun})`);
+  return { code: 0, summary, details };
 }
 
-function printHelp() {
-  const keys = Object.keys(MAP).join(', ');
+function printHelp(effectiveMap = BASE_MAP) {
+  const keys = Object.keys(effectiveMap).join(', ');
   console.log(`kb-devkit-sync
 Synchronize DevKit assets into a consumer repository.
 
 Usage:
-  kb-devkit-sync [--check] [--force] [--verbose] [--timeout=ms] [--only=a,b] [targets...]
+  kb-devkit-sync [--check] [--force] [--dry-run] [--verbose] [--json] [--timeout=ms] [--only=a,b] [targets...]
 
 Targets:
   ${keys}
+  (You can override or add targets via kb-labs.config.json → { "sync": { "overrides": {..}, "targets": {..} } })
 
 Flags:
   --help, -h        Show this help and exit
   --version, -v     Print devkit version and exit
   --check           Compare and exit with 0 (no drift) or 2 (drift found)
   --force           Overwrite destination files/directories
+  --dry-run         Do not write files; print planned actions
   --verbose         Print per-target details
+  --json            Emit machine-readable JSON result to stdout
   --timeout=ms      Optional timeout guard (default 30000)
   --only=a,b        Limit sync/check to specific targets
 `);
@@ -229,13 +279,14 @@ async function printVersion() {
 }
 
 export async function run({ args = [] } = {}) {
-  const { help, version, check, force, verbose, timeoutMs, onlyList, positional } = parseArgs(args);
+  const { help, version, check, force, verbose, json, dryRun, timeoutMs, onlyList, positional } = parseArgs(args);
   const root = process.cwd();
   const cfg = await readProjectConfig(root);
   const disabledSet = new Set(cfg?.sync?.disabled ?? []);
-  const targets = resolveTargets({ onlyList, positional, disabledSet });
+  const map = buildEffectiveMap(cfg);
+  const targets = resolveTargets(map, { onlyList, positional, disabledSet });
 
-  if (help) { printHelp(); return 0; }
+  if (help) { printHelp(map); return 0; }
   if (version) { await printVersion(); return 0; }
 
   const controller = new AbortController();
@@ -243,9 +294,13 @@ export async function run({ args = [] } = {}) {
 
   try {
     if (check) {
-      return await runCheck(root, targets, verbose);
+      const res = await runCheck(root, map, targets, verbose);
+      if (json) console.log(JSON.stringify({ mode: 'check', ...res }, null, 2));
+      return res.code;
     } else {
-      return await runSync(root, targets, force || !!cfg?.sync?.force, verbose);
+      const res = await runSync(root, map, targets, { force: force || !!cfg?.sync?.force, verbose, dryRun });
+      if (json) console.log(JSON.stringify({ mode: 'sync', ...res }, null, 2));
+      return res.code;
     }
   } finally {
     clearTimeout(t);

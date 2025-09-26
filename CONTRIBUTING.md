@@ -47,6 +47,8 @@ pnpm fixtures:check      # run all validation checks
 - `tsup/*` — Tsup configs in JS format (node.js)
 - `agents/*` — AI agent definitions (prompts, runbooks, context)
 - `fixtures/*` — Validation fixtures for testing DevKit changes
+- `sync/*` — Repository synchronization system
+- `workflows-templates/*` — Template workflows for consumer projects
 - `.github/workflows/*` — Reusable GitHub workflows
 - `.github/actions/setup-node-pnpm` — Reusable action for Node+pnpm setup
 
@@ -99,10 +101,85 @@ See [`AGENTS.md`](./AGENTS.md) for detailed agent documentation.
 - Link related issues if they exist.
 - Expect the reusable PR workflow to run: install, build (best-effort), tests.
 
+## Repository Synchronization
+
+The DevKit includes a powerful sync system (`sync/index.mjs`) that allows consumer projects to stay up-to-date with the latest DevKit assets. This is especially useful for maintaining consistent tooling across KB Labs projects.
+
+### Sync System Features
+
+- **Configurable targets**: Sync specific files/directories with custom paths
+- **Drift detection**: Check for differences without making changes
+- **Force overwrite**: Option to overwrite existing files
+- **Dry run**: Preview changes without applying them
+- **JSON output**: Machine-readable output for scripting
+- **Custom configuration**: Override default behavior via `kb-labs.config.json`
+
+### Adding New Sync Targets
+
+To add a new sync target to the DevKit:
+
+1. **Update `BASE_MAP`** in `sync/index.mjs`:
+```javascript
+const BASE_MAP = {
+  // ... existing targets
+  newtarget: {
+    from: resolve(DEVKIT_ROOT, 'path/to/source'),
+    to: (root) => resolve(root, 'path/to/destination'),
+    type: 'file', // or 'dir'
+  },
+};
+```
+
+2. **Test the new target**:
+```bash
+# Test locally
+node sync/index.mjs --dry-run newtarget
+
+# Test in fixtures
+cd fixtures/lib
+node ../../sync/index.mjs --dry-run newtarget
+```
+
+3. **Update documentation** in README.md with the new target
+
+### Sync Configuration Schema
+
+Consumer projects can configure sync behavior via `kb-labs.config.json`:
+
+```json
+{
+  "sync": {
+    "disabled": ["vscode"],
+    "overrides": {
+      "cursorrules": { "to": ".config/cursor/rules.json" }
+    },
+    "targets": {
+      "custom": {
+        "from": "custom/source",
+        "to": "custom/destination", 
+        "type": "dir"
+      }
+    },
+    "force": false
+  }
+}
+```
+
+### Workflow Templates
+
+The `workflows-templates/` directory contains template workflows that consumer projects can copy and customize:
+
+- `ci.yml` — Basic CI workflow template
+- `drift-check.yml` — DevKit drift check template
+- `release.yml` — Release workflow template
+- `sbom.yml` — Software Bill of Materials template
+
+These templates use the reusable workflows from `.github/workflows/` but provide a starting point for consumer projects.
+
 ## CI
 This repo provides reusable workflows:
-- `reusable-ci` (`.github/workflows/ci.yml`) — checkout, setup Node+pnpm, install, lint, optional type-check, tests, optional coverage, build.
-- `reusable-pr-check` (`.github/workflows/pr-check.yml`) — checkout, setup Node+pnpm, install, build (best-effort), tests.
+- `reusable-ci` (`.github/workflows/ci.yml`) — checkout, setup Node+pnpm, install, lint, optional type-check, tests, optional coverage, build, drift check.
+- `reusable-drift-check` (`.github/workflows/drift-check.yml`) — dedicated DevKit drift check workflow.
 - `reusable-release` (`.github/workflows/release.yml`) — build, create GitHub release, optional npm publish.
 
 Consumers can call these via `workflow_call`:
@@ -112,8 +189,8 @@ jobs:
     uses: kb-labs/devkit/.github/workflows/ci.yml@main
     with:
       node-version: '20'
-      os: 'ubuntu-latest'
       run-coverage: true
+      enable-drift-check: true
 ```
 
 ## Releases

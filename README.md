@@ -184,42 +184,276 @@ Run:
 pnpm vitest
 ```
 
-## GitHub Actions
-This repo includes reusable workflows and actions (see `.github/workflows`). Recommended minimal set:
+## Repository Synchronization
 
-- CI (lint, tests):
+The DevKit includes a powerful sync system that allows you to keep your project up-to-date with the latest DevKit assets. This is especially useful for maintaining consistent tooling across KB Labs projects.
+
+### Quick Sync
+
+To sync DevKit assets into your project:
+
+```bash
+# Install the sync tool
+pnpm add -D @kb-labs/devkit
+
+# Run sync (creates/updates files)
+npx kb-devkit-sync
+
+# Check for drift without making changes
+npx kb-devkit-sync --check
+
+# Force overwrite existing files
+npx kb-devkit-sync --force
+```
+
+### Sync Configuration
+
+Create a `kb-labs.config.json` file in your project root to customize sync behavior:
+
+```json
+{
+  "sync": {
+    "disabled": ["vscode"],
+    "overrides": {
+      "cursorrules": { "to": ".config/cursor/rules.json" }
+    },
+    "targets": {
+      "workflows": {
+        "from": ".github/workflows", 
+        "to": ".github/workflows", 
+        "type": "dir"
+      }
+    }
+  }
+}
+```
+
+#### Configuration Options
+
+- **`disabled`**: Array of target names to skip during sync
+- **`overrides`**: Override source paths, destination paths, or types for existing targets
+- **`targets`**: Add custom sync targets with `from`, `to`, and `type` properties
+- **`force`**: Boolean to force overwrite existing files (can be set in config or via `--force` flag)
+
+#### Available Targets
+
+By default, the sync tool includes these targets:
+- **`agents`**: AI agent definitions → `kb-labs/agents/`
+- **`cursorrules`**: Cursor AI rules → `.cursorrules`
+- **`vscode`**: VS Code settings → `.vscode/settings.json`
+
+#### Sync Commands
+
+```bash
+# Sync all targets
+npx kb-devkit-sync
+
+# Sync specific targets only
+npx kb-devkit-sync agents cursorrules
+
+# Check for drift (exit code 0 = no drift, 2 = drift found)
+npx kb-devkit-sync --check
+
+# Dry run (show what would be synced without making changes)
+npx kb-devkit-sync --dry-run
+
+# Verbose output
+npx kb-devkit-sync --verbose
+
+# JSON output for scripting
+npx kb-devkit-sync --json
+```
+
+#### Configuration Examples
+
+**Basic configuration** (disable VS Code settings):
+```json
+{
+  "sync": {
+    "disabled": ["vscode"]
+  }
+}
+```
+
+**Custom paths** (move Cursor rules to config directory):
+```json
+{
+  "sync": {
+    "overrides": {
+      "cursorrules": { "to": ".config/cursor/rules.json" }
+    }
+  }
+}
+```
+
+**Add custom workflow sync**:
+```json
+{
+  "sync": {
+    "targets": {
+      "workflows": {
+        "from": ".github/workflows", 
+        "to": ".github/workflows", 
+        "type": "dir"
+      }
+    }
+  }
+}
+```
+
+**Force overwrite mode**:
+```json
+{
+  "sync": {
+    "force": true
+  }
+}
+```
+
+**Complex configuration** (combine multiple options):
+```json
+{
+  "sync": {
+    "disabled": ["vscode"],
+    "overrides": {
+      "cursorrules": { "to": ".config/cursor/rules.json" },
+      "agents": { "to": "tools/agents" }
+    },
+    "targets": {
+      "workflows": {
+        "from": ".github/workflows", 
+        "to": ".github/workflows", 
+        "type": "dir"
+      },
+      "docs": {
+        "from": "docs/templates", 
+        "to": "docs", 
+        "type": "dir"
+      }
+    },
+    "force": false
+  }
+}
+```
+
+### GitHub Actions Integration
+
+Add a drift check to your CI to ensure your project stays in sync:
+
 ```yaml
 name: CI
 on: [push, pull_request]
 jobs:
   ci:
     uses: kb-labs/devkit/.github/workflows/ci.yml@main
+    with:
+      enable-drift-check: true
 ```
 
-- PR Check (quick PR validation):
+Or use the dedicated drift check workflow:
+
 ```yaml
-name: PR Check
+name: Drift Check
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 3 * * *' # nightly
 jobs:
-  pr-check:
-    uses: kb-labs/devkit/.github/workflows/pr-check.yml@main
+  drift:
+    uses: kb-labs/devkit/.github/workflows/drift-check.yml@main
 ```
 
-- Release (semantic-style tags):
+## GitHub Actions
+
+This repo provides both reusable workflows and template workflows for easy setup.
+
+### Reusable Workflows
+
+Use these workflows directly in your project via `workflow_call`:
+
+- **CI** (`.github/workflows/ci.yml`) — Complete CI pipeline with drift check
+- **Drift Check** (`.github/workflows/drift-check.yml`) — DevKit synchronization check
+- **Release** (`.github/workflows/release.yml`) — Automated releases and publishing
+
+### Workflow Templates
+
+Copy and customize these templates from `workflows-templates/`:
+
+- **`ci.yml`** — Basic CI workflow template
+- **`drift-check.yml`** — DevKit drift check template  
+- **`release.yml`** — Release workflow template
+- **`sbom.yml`** — Software Bill of Materials template
+
+### Quick Setup
+
+**Option 1: Use templates (recommended for new projects)**
+```bash
+# Copy workflow templates to your project
+cp workflows-templates/*.yml .github/workflows/
+# Then customize as needed
+```
+
+**Option 2: Use reusable workflows directly**
 ```yaml
-name: Release
-on:
-  push:
-    tags:
-      - 'v*.*.*'
+name: CI
+on: [push, pull_request]
 jobs:
-  release:
-    uses: kb-labs/devkit/.github/workflows/release.yml@main
+  ci:
+    uses: kb-labs/devkit/.github/workflows/ci.yml@main
+    with:
+      node-version: '20'
+      run-coverage: true
+      enable-drift-check: true
 ```
 
-> Note: when using `workflow_call`/`uses`, ensure your repo has access to the source repo and required secrets if the workflow needs them.
+**Option 3: Hybrid approach**
+```yaml
+name: CI
+on: [push, pull_request]
+jobs:
+  call:
+    uses: kb-labs/devkit/.github/workflows/ci.yml@main
+    with:
+      node-version: '20'
+      run-coverage: true
+```
+
+### Available Workflow Inputs
+
+**CI Workflow** (`.github/workflows/ci.yml`):
+- `node-version` (default: '20') — Node.js version
+- `run-coverage` (default: true) — Enable coverage reporting
+- `enable-drift-check` (default: true) — Run DevKit drift check
+
+**Drift Check Workflow** (`.github/workflows/drift-check.yml`):
+- `node-version` (default: '20') — Node.js version
+
+### Drift Check Integration
+
+The drift check ensures your project stays synchronized with the latest DevKit assets:
+
+```yaml
+# In your CI workflow
+jobs:
+  ci:
+    uses: kb-labs/devkit/.github/workflows/ci.yml@main
+    with:
+      enable-drift-check: true  # Fails CI if DevKit is out of sync
+```
+
+Or use the dedicated drift check workflow:
+```yaml
+name: Drift Check
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 3 * * *' # nightly
+jobs:
+  drift:
+    uses: kb-labs/devkit/.github/workflows/drift-check.yml@main
+```
+
+> **Note**: When using `workflow_call`/`uses`, ensure your repo has access to the source repo and required secrets if the workflow needs them.
 
 ## Validation Fixtures
 
@@ -268,6 +502,8 @@ This DevKit follows architectural decision records to document important design 
 - **[ADR 0003: Validation Fixtures Strategy](./docs/adr/0003-validation-fixtures-strategy.md)** - Approach to testing DevKit presets with realistic consumer projects
 - **[ADR 0004: Testing Strategy and Quality Gates](./docs/adr/0004-testing-strategy-and-quality-gates.md)** - Comprehensive testing approach with multiple validation layers
 - **[ADR 0005: Build & Types Strategy for KB Labs Monorepos](./docs/adr/0005-build-strategy.md)** - Unified approach to build and type generation using tsup instead of separate TSC
+- **[ADR 0006: Sequential Build & Type Safety in KB Labs Monorepos](./docs/adr/0006-monorepo-build-and-types.md)** - Orchestration of build order and dependency resolution in monorepos
+- **[ADR 0007: Reusable Workflow Strategy for CI Synchronization](./docs/adr/0007-reusable-workflow-strategy.md)** - Centralized CI workflows and drift check strategy
 
 ## Use cases
 - Bootstrap new packages/services without copying configs.
@@ -276,13 +512,79 @@ This DevKit follows architectural decision records to document important design 
 - Migrate existing projects to shared presets with minimal effort.
 - Validate DevKit changes against real-world usage patterns.
 
+## Migration Guide
+
+### Updating to Latest DevKit
+
+To update your project to the latest DevKit version:
+
+1. **Update the package**:
+```bash
+pnpm update @kb-labs/devkit
+```
+
+2. **Check for drift**:
+```bash
+npx kb-devkit-sync --check
+```
+
+3. **Sync changes** (if drift found):
+```bash
+npx kb-devkit-sync --force
+```
+
+4. **Review and commit changes**:
+```bash
+git add .
+git commit -m "chore: update devkit to latest version"
+```
+
+### Migrating from Manual Setup
+
+If you're migrating from manually copied configs to the sync system:
+
+1. **Install DevKit**:
+```bash
+pnpm add -D @kb-labs/devkit
+```
+
+2. **Create sync configuration**:
+```json
+{
+  "sync": {
+    "disabled": ["vscode"], // if you don't want VS Code settings
+    "overrides": {
+      "cursorrules": { "to": ".cursorrules" } // customize paths as needed
+    }
+  }
+}
+```
+
+3. **Run initial sync**:
+```bash
+npx kb-devkit-sync --force
+```
+
+4. **Remove old config files** and update imports to use DevKit presets
+
+5. **Add drift check to CI**:
+```yaml
+jobs:
+  ci:
+    uses: kb-labs/devkit/.github/workflows/ci.yml@main
+    with:
+      enable-drift-check: true
+```
+
 ## FAQ
 - **Can I override rules?** — Yes. Extend locally and add your overrides on top.
-- **How do I update?** — Bump `@kb-labs/devkit` and review the release notes/Changelog.
+- **How do I update?** — Bump `@kb-labs/devkit` and run `npx kb-devkit-sync --check` to see what changed.
 - **ESLint 9 flat config?** — Yes, all ESLint configs use the new flat config format.
 - **ESM only?** — Yes, all presets assume ESM. For CJS, add dual builds/transpilation in your project.
 - **TypeScript errors with module resolution?** — Ensure you're using `module: "NodeNext"` in your tsconfig.
 - **Importing specific files vs folders?** — Both are supported. Use `@kb-labs/devkit/tsconfig/node.json` for specific files or `@kb-labs/devkit/tsconfig/` for folder imports.
+- **What is drift check?** — A feature that compares your project's DevKit assets with the latest version to detect outdated files.
+- **Can I customize sync behavior?** — Yes, use `kb-labs.config.json` to disable targets, override paths, or add custom sync targets.
 
 ## License
 MIT. See `LICENSE`.

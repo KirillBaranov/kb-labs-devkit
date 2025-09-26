@@ -1,0 +1,10 @@
+# NOTE: enable after reusable-sbom exists in DevKit
+name: SBOM
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    uses: KirillBaranov/kb-labs-devkit/.github/workflows/sbom.yml@main

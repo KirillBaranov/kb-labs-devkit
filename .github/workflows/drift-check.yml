@@ -1,0 +1,23 @@
+name: reusable-drift-check
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        default: '20'
+        type: string
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: KirillBaranov/kb-labs-devkit/.github/actions/setup-node-pnpm@main
+        with:
+          node-version: ${{ inputs.node-version }}
+      - run: pnpm i --frozen-lockfile
+      - name: DevKit drift check
+        run: |
+          pnpm -s devkit:check || \
+          node scripts/devkit-sync.mjs --check || \
+          ./node_modules/.bin/kb-devkit-sync --check
