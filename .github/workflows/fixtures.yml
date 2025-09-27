@@ -1,0 +1,53 @@
+name: DevKit Fixtures
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - '**/.vscode/**'
+      - '**/.idea/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 3 * * 1' # weekly canary (Mon 03:00 UTC)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devkit-fixtures-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  fixtures:
+    name: Run fixtures (all)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: KirillBaranov/kb-labs-devkit/.github/actions/setup-node-pnpm@main
+        with:
+          node-version: '20'
+
+      - name: Install DevKit deps
+        run: pnpm i --frozen-lockfile
+
+      - name: Bootstrap fixtures
+        run: pnpm fixtures:bootstrap
+
+      - name: Run fixtures check (lib/cli/web/monorepo)
+        run: pnpm fixtures:check
+
+      - name: Upload artifacts (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixtures-artifacts
+          path: |
+            fixtures/**/coverage/**
+            fixtures/**/dist/**
+          if-no-files-found: ignore

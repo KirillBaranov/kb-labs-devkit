@@ -50,11 +50,14 @@
     "clean": "rimraf dist",
     "build": "echo \"@kb-labs/devkit: nothing to build\"",
     "test": "vitest run",
-    "fixtures": "node scripts/fixtures.js",
-    "fixtures:check": "node scripts/fixtures.js all check",
-    "fixtures:lint": "node scripts/fixtures.js all lint",
-    "fixtures:test": "node scripts/fixtures.js all test",
-    "fixtures:build": "node scripts/fixtures.js all build"
+    "fixtures": "node scripts/fixtures.js –help",
+    "fixtures:check": "node scripts/fixtures.js –action=check",
+    "fixtures:lint": "node scripts/fixtures.js –action=lint",
+    "fixtures:test": "node scripts/fixtures.js –action=test",
+    "fixtures:build": "node scripts/fixtures.js –action=build",
+    "fixtures:bootstrap": "node scripts/fixtures.js –action=bootstrap",
+    "fixtures:clean": "node scripts/fixtures.js –action=clean",
+    "fixtures:ci": "node scripts/fixtures.js –action=check –since=${GITHUB_BASE_REF:-origin/main} –concurrency=3 || node scripts/fixtures.js –action=check"
   },
   "peerDependencies": {
     "eslint": "^9.35.0",
