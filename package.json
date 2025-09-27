@@ -17,6 +17,7 @@
     "bin",
     "sync",
     "AGENTS.md",
+    ".github",
     ".github/workflow-templates/**",
     ".github/actions/**"
   ],
@@ -46,8 +47,7 @@
     "./.vscode/settings.json": "./.vscode/settings.json",
     "./AGENTS.md": "./AGENTS.md",
     "./bin/devkit-sync.mjs": "./bin/devkit-sync.mjs",
-    "./sync": "./sync/index.mjs",
-    "./workflows-templates": "./workflows-templates/"
+    "./sync": "./sync/index.mjs"
   },
   "scripts": {
     "clean": "rimraf dist",
