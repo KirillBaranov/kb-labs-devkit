@@ -163,9 +163,10 @@ function parseArgs(argv) {
   const json = flags.has('--json');
   const dryRun = flags.has('--dry-run');
   const ciOnly = flags.has('--ci-only');
+  const list = flags.has('--list');
   const timeoutMs = Number(kv.get('--timeout') ?? process.env.KB_DEVKIT_SYNC_TIMEOUT_MS ?? 30000);
   const onlyList = kv.get('--only')?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
-  return { help, version, check, force, verbose, json, dryRun, ciOnly, timeoutMs, onlyList, positional };
+  return { help, version, check, force, verbose, json, dryRun, ciOnly, list, timeoutMs, onlyList, positional };
 }
 
 async function readProjectConfig(root) {
@@ -260,15 +261,16 @@ Usage:
 
 Targets:
   ${keys}
-  (You can override or add targets via kb-labs.config.json → { "sync": { "overrides": {..}, "targets": {..} } })
+  (You can override/add via kb-labs.config.json → { "sync": { "overrides": {..}, "targets": {..}, "only": ["ci","drift-check"], "disabled": ["sbom"] } })
 
 Flags:
   --help, -h        Show this help and exit
   --version, -v     Print devkit version and exit
+  --list            Print available target keys and exit
   --check           Compare and exit with 0 (no drift) or 2 (drift found)
   --force           Overwrite destination files/directories
   --dry-run         Do not write files; print planned actions
-  --ci-only        Limit scope to CI templates (alias for --only=ci)
+  --ci-only         Limit scope to CI templates (alias for --only=ci)
   --verbose         Print per-target details
   --json            Emit machine-readable JSON result to stdout
   --timeout=ms      Optional timeout guard (default 30000)
@@ -286,21 +288,43 @@ async function printVersion() {
 }
 
 export async function run({ args = [] } = {}) {
-  const { help, version, check, force, verbose, json, dryRun, ciOnly, timeoutMs, onlyList, positional } = parseArgs(args);
+  const { help, version, check, force, verbose, json, dryRun, ciOnly, list, timeoutMs, onlyList, positional } = parseArgs(args);
   const root = process.cwd();
   const cfg = await readProjectConfig(root);
+
+  // Allow turning off sync entirely from config
+  if (cfg?.sync?.enabled === false) {
+    log('sync disabled by kb-labs.config.json');
+    return 0;
+  }
+
   const disabledSet = new Set(cfg?.sync?.disabled ?? []);
   const map = buildEffectiveMap(cfg);
 
-  let select = [...onlyList];
+  // If user asked to list available targets, do it early and exit
+  if (list) {
+    console.log('[devkit-sync] available targets:', Object.keys(map).join(', '));
+    return 0;
+  }
+
+  const cfgOnly = Array.isArray(cfg?.sync?.only) ? cfg.sync.only.filter(s => typeof s === 'string' && s.length > 0) : [];
+  // Priority: CLI --only > config `sync.only`; positional arguments are additive
+  let select = onlyList.length ? onlyList.slice() : cfgOnly.slice();
+
   if (ciOnly) {
-    const inSelect = select.includes('ci');
-    const inPos = positional.includes('ci');
-    if (!inSelect && !inPos) {
-      if (select.length === 0 && positional.length === 0) select = ['ci']; else select.push('ci');
+    const hasCi = select.includes('ci') || positional.includes('ci');
+    if (!hasCi) {
+      if (select.length === 0 && positional.length === 0) select = ['ci'];
+      else select.push('ci');
     }
   }
-  const targets = resolveTargets(map, { onlyList: select, positional, disabledSet });
+
+  // Deduplicate while preserving order
+  const seen = new Set();
+  select = select.filter(k => (k && !seen.has(k) && seen.add(k)));
+
+  const pos = positional.filter(Boolean);
+  const targets = resolveTargets(map, { onlyList: select, positional: pos, disabledSet });
 
   if (help) { printHelp(map); return 0; }
   if (version) { await printVersion(); return 0; }
