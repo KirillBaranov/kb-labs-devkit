@@ -7,7 +7,7 @@ on:
 
 jobs:
   call:
-    uses: KirillBaranov/kb-labs-devkit/.github/workflows/ci.yml@main
+    uses: KirillBaranov/kb-labs-devkit/.github/workflows/ci-reusable.yml@main
     with:
       node-version: '20'
       run-coverage: true

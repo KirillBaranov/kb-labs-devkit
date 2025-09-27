@@ -1,8 +1,0 @@
-name: Release
-on:
-  push:
-    tags: ['v*']
-  workflow_dispatch: {}
-jobs:
-  call:
-    uses: KirillBaranov/kb-labs-devkit/.github/workflows/release.yml@main
