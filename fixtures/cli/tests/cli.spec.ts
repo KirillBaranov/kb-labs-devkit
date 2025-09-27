@@ -6,23 +6,23 @@ const execAsync = promisify(exec)
 
 describe('CLI fixture', () => {
   it('should greet without excitement', async () => {
-    const { stdout } = await execAsync('node fixtures/cli/dist/cli.js greet World')
+    const { stdout } = await execAsync('jiti src/cli.ts greet World')
     expect(stdout.trim()).toBe('Hello, World.')
   })
 
   it('should greet with excitement', async () => {
-    const { stdout } = await execAsync('node fixtures/cli/dist/cli.js greet World --excited')
+    const { stdout } = await execAsync('jiti src/cli.ts greet World --excited')
     expect(stdout.trim()).toBe('Hello, World!')
   })
 
   it('should perform addition', async () => {
-    const { stdout } = await execAsync('node fixtures/cli/dist/cli.js calculate add 5 3')
+    const { stdout } = await execAsync('jiti src/cli.ts calculate add 5 3')
     expect(stdout.trim()).toBe('Result: 8')
   })
 
   it('should handle division by zero', async () => {
     try {
-      await execAsync('node fixtures/cli/dist/cli.js calculate divide 5 0')
+      await execAsync('jiti src/cli.ts calculate divide 5 0')
     } catch (error: any) {
       expect(error.stderr).toContain('Division by zero')
     }
