@@ -1,9 +1,0 @@
-name: Security Scan
-on:
-  schedule:
-    - cron: '0 3 * * 1' # weekly
-  workflow_dispatch: {}
-
-jobs:
-  call:
-    uses: KirillBaranov/kb-labs-devkit/.github/workflows/security-reusable.yml@main
