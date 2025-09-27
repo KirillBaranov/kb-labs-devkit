@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative } from 'node:path';
 import { existsSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -77,6 +76,10 @@ Flags:
   --bail             Stop scheduling new fixtures on first failure
   --help, -h         Show this help
 
+Notes:
+  • "check" will automatically run "pnpm i --frozen-lockfile" for each fixture before checks.
+  • "check" order is: build → type-check → test → lint.
+
 Examples:
   node scripts/fixtures.js --action=check
   node scripts/fixtures.js --action=lint --only=lib,web
@@ -95,29 +98,30 @@ function planCommands(fixture, action) {
     build: 'pnpm build',
   };
 
-  // Composite "check"
+  // Composite "check": build → type-check → test → lint
   const checkSeq = [
-    base.lint,
-    base['type-check'],
     base.build,
+    base['type-check'],
     base.test,
+    base.lint,
   ];
 
   // Special handling
   if (fixture === 'monorepo' && action === 'check') {
     return [
-      'pnpm -r lint',
-      'pnpm -r type-check || true', // allow TS stricter packages to evolve
       'pnpm -r build',
+      'pnpm -r type-check || true', // allow stricter packages to evolve
       'pnpm -r test -- --run',
+      'pnpm -r lint',
     ];
   }
+
   if (fixture === 'cli' && action === 'check') {
     return [
-      base.lint,
+      base.build,            // build first so tests see dist
       base['type-check'],
-      base.build,      // build before tests to mimic consumer usage
       base.test,
+      base.lint,
     ];
   }
 
@@ -136,6 +140,17 @@ async function runFixture(fixture, action) {
   }
 
   console.log(`\n📦 Fixture: ${fixture} • Action: ${action}`);
+
+  // Always install before "check" to avoid missing node_modules in CI
+  if (action === 'check') {
+    console.log(`🔧 ${fixture} > pnpm i --frozen-lockfile`);
+    const installCode = await sh('pnpm i --frozen-lockfile', cwd);
+    if (installCode !== 0) {
+      console.error(`❌ ${fixture} failed on: pnpm i --frozen-lockfile (exit ${installCode})`);
+      return { fixture, ok: false, code: installCode, skipped: false };
+    }
+  }
+
   const commands = planCommands(fixture, action);
 
   for (const cmd of commands) {

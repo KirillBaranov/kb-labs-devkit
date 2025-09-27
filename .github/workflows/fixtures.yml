@@ -24,6 +24,8 @@ jobs:
   fixtures:
     name: Run fixtures (all)
     runs-on: ubuntu-latest
+    env:
+      CI: true
 
     steps:
       - uses: actions/checkout@v4
@@ -33,14 +35,33 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Install DevKit deps
         run: pnpm i --frozen-lockfile
+
+      - name: Clean fixtures
+        run: pnpm fixtures:clean || true
 
       - name: Bootstrap fixtures
         run: pnpm fixtures:bootstrap
 
-      - name: Run fixtures check (lib/cli/web/monorepo)
-        run: pnpm fixtures:check
+      - name: Run fixtures (smart check)
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ -n "${{ github.base_ref }}" ]; then
+            echo "Running differential fixtures check since origin/${{ github.base_ref }}"
+            pnpm fixtures -- --action=check --since=origin/${{ github.base_ref }}
+          else
+            echo "Running full fixtures check"
+            pnpm fixtures:check
+          fi
 
       - name: Upload artifacts (optional)
         if: always()
