@@ -166,7 +166,12 @@ function parseArgs(argv) {
   const list = flags.has('--list');
   const timeoutMs = Number(kv.get('--timeout') ?? process.env.KB_DEVKIT_SYNC_TIMEOUT_MS ?? 30000);
   const onlyList = kv.get('--only')?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
-  return { help, version, check, force, verbose, json, dryRun, ciOnly, list, timeoutMs, onlyList, positional };
+
+  // scope: managed-only (default) | strict | all
+  const scopeRaw = (kv.get('--scope') ?? process.env.KB_DEVKIT_SYNC_SCOPE ?? '').toString();
+  const scope = ['managed-only', 'strict', 'all'].includes(scopeRaw) ? scopeRaw : 'managed-only';
+
+  return { help, version, check, force, verbose, json, dryRun, ciOnly, list, timeoutMs, onlyList, positional, scope };
 }
 
 async function readProjectConfig(root) {
@@ -181,31 +186,50 @@ function resolveTargets(effectiveMap, { onlyList, positional, disabledSet }) {
   return requested.filter(k => effectiveMap[k] && !disabledSet.has(k));
 }
 
-async function writeProvenance(root) {
+async function writeProvenance(root, { items = [], scope = 'managed-only' } = {}) {
   let meta = null;
   try {
     const pkgJson = JSON.parse(await readFile(resolve(DEVKIT_ROOT, 'package.json'), 'utf8'));
     meta = { name: pkgJson.name, version: pkgJson.version ?? null, description: pkgJson.description ?? null };
   } catch { }
   await mkdir(resolve(root, 'kb-labs'), { recursive: true });
-  await writeFile(
-    resolve(root, 'kb-labs/DEVKIT_SYNC.json'),
-    JSON.stringify({ source: meta?.name ?? '@kb-labs/devkit', version: meta?.version ?? null, when: new Date().toISOString() }, null, 2)
-  );
+  const payload = {
+    source: meta?.name ?? '@kb-labs/devkit',
+    version: meta?.version ?? null,
+    when: new Date().toISOString(),
+    scope,
+    items,
+  };
+  await writeFile(resolve(root, 'kb-labs/DEVKIT_SYNC.json'), JSON.stringify(payload, null, 2));
 }
 
-async function runCheck(root, effectiveMap, targets, verbose) {
+async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
   const details = [];
   const summary = { ok: 0, drift: 0 };
+  const considerOnlyDst = scope !== 'managed-only';
+
   for (const key of targets) {
     const { from, to, type } = effectiveMap[key];
     const dst = to(root);
     const res = await comparePaths(from, dst, type);
-    const changed = (res.diffs.length + res.onlySrc.length + res.onlyDst.length) > 0;
-    details.push({ key, type, dst, changed, ...res });
+
+    const changed = (res.diffs.length + res.onlySrc.length + (considerOnlyDst ? res.onlyDst.length : 0)) > 0;
+    const item = {
+      key,
+      type,
+      dst,
+      diffs: res.diffs,
+      onlySrc: res.onlySrc,
+      onlyDst: considerOnlyDst ? res.onlyDst : [],
+    };
+    if (!considerOnlyDst && res.onlyDst.length) {
+      item.ignored = { onlyDst: res.onlyDst.length };
+    }
+
+    details.push(item);
     if (changed) {
       summary.drift++;
-      log(`drift ${key}:`, JSON.stringify(res, null, 2));
+      log(`drift ${key}:`, JSON.stringify(item, null, 2));
     } else {
       summary.ok++;
       if (verbose) log(`ok ${key}: no drift`);
@@ -246,7 +270,6 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
     details.push({ key, action: 'synced', from, dst, type });
     log(`synced ${key} -> ${dst}`);
   }
-  await writeProvenance(root);
   log('sync done', summary, `(force=${force}, dry-run=${!!dryRun})`);
   return { code: 0, summary, details };
 }
@@ -257,11 +280,11 @@ function printHelp(effectiveMap = BASE_MAP) {
 Synchronize DevKit assets into a consumer repository.
 
 Usage:
-  kb-devkit-sync [--check] [--force] [--dry-run] [--verbose] [--json] [--timeout=ms] [--only=a,b] [targets...]
+  kb-devkit-sync [--check] [--force] [--dry-run] [--verbose] [--json] [--timeout=ms] [--scope=managed-only|strict|all] [--only=a,b] [targets...]
 
 Targets:
   ${keys}
-  (You can override/add via kb-labs.config.json → { "sync": { "overrides": {..}, "targets": {..}, "only": ["ci","drift-check"], "disabled": ["sbom"] } })
+  (Override/add via kb-labs.config.json → { "sync": { "overrides": {..}, "targets": {..}, "only": ["ci"], "disabled": ["sbom"], "scope": "managed-only" } })
 
 Flags:
   --help, -h        Show this help and exit
@@ -271,6 +294,7 @@ Flags:
   --force           Overwrite destination files/directories
   --dry-run         Do not write files; print planned actions
   --ci-only         Limit scope to CI templates (alias for --only=ci)
+  --scope=...       Set drift scope: 'managed-only' (ignore foreign files, default), 'strict' (flag foreign files), 'all'
   --verbose         Print per-target details
   --json            Emit machine-readable JSON result to stdout
   --timeout=ms      Optional timeout guard (default 30000)
@@ -288,7 +312,7 @@ async function printVersion() {
 }
 
 export async function run({ args = [] } = {}) {
-  const { help, version, check, force, verbose, json, dryRun, ciOnly, list, timeoutMs, onlyList, positional } = parseArgs(args);
+  const { help, version, check, force, verbose, json, dryRun, ciOnly, list, timeoutMs, onlyList, positional, scope: scopeFromCli } = parseArgs(args);
   const root = process.cwd();
   const cfg = await readProjectConfig(root);
 
@@ -326,6 +350,10 @@ export async function run({ args = [] } = {}) {
   const pos = positional.filter(Boolean);
   const targets = resolveTargets(map, { onlyList: select, positional: pos, disabledSet });
 
+  // resolve scope precedence: CLI → config → default
+  let scope = scopeFromCli || cfg?.sync?.scope || 'managed-only';
+  if (!['managed-only', 'strict', 'all'].includes(scope)) scope = 'managed-only';
+
   if (help) { printHelp(map); return 0; }
   if (version) { await printVersion(); return 0; }
 
@@ -334,11 +362,13 @@ export async function run({ args = [] } = {}) {
 
   try {
     if (check) {
-      const res = await runCheck(root, map, targets, verbose);
+      const res = await runCheck(root, map, targets, { verbose, scope });
       if (json) console.log(JSON.stringify({ mode: 'check', ...res }, null, 2));
       return res.code;
     } else {
       const res = await runSync(root, map, targets, { force: force || !!cfg?.sync?.force, verbose, dryRun });
+      // write provenance with items + scope
+      await writeProvenance(root, { items: targets, scope });
       if (json) console.log(JSON.stringify({ mode: 'sync', ...res }, null, 2));
       return res.code;
     }
