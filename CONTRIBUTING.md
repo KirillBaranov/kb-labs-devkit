@@ -109,10 +109,14 @@ The DevKit includes a powerful sync system (`sync/index.mjs`) that allows consum
 
 - **Configurable targets**: Sync specific files/directories with custom paths
 - **Drift detection**: Check for differences without making changes
+- **Drift modes**: `managed-only` (default), `strict`, and `all` for different enforcement levels
+- **Provenance tracking**: Automatic creation of `kb-labs/DEVKIT_SYNC.json` with sync metadata
 - **Force overwrite**: Option to overwrite existing files
 - **Dry run**: Preview changes without applying them
 - **JSON output**: Machine-readable output for scripting
 - **Custom configuration**: Override default behavior via `kb-labs.config.json`
+- **Selective sync**: Sync only specific targets with `only` configuration
+- **Scope control**: CLI and config support for drift detection modes
 
 ### Adding New Sync Targets
 
@@ -149,7 +153,11 @@ Consumer projects can configure sync behavior via `kb-labs.config.json`:
 ```json
 {
   "sync": {
+    "enabled": true,
     "disabled": ["vscode"],
+    "only": ["ci", "agents"],
+    "scope": "managed-only",
+    "force": false,
     "overrides": {
       "cursorrules": { "to": ".config/cursor/rules.json" }
     },
@@ -159,11 +167,46 @@ Consumer projects can configure sync behavior via `kb-labs.config.json`:
         "to": "custom/destination", 
         "type": "dir"
       }
-    },
-    "force": false
+    }
   }
 }
 ```
+
+#### Configuration Options
+
+- **`enabled`**: Boolean to enable/disable sync entirely (default: true)
+- **`disabled`**: Array of target names to skip during sync
+- **`only`**: Array of target names to sync (if empty, syncs all enabled targets)
+- **`scope`**: Drift detection mode: `"managed-only"` (default), `"strict"`, or `"all"`
+- **`force`**: Boolean to force overwrite existing files
+- **`overrides`**: Override source paths, destination paths, or types for existing targets
+- **`targets`**: Add custom sync targets with `from`, `to`, and `type` properties
+
+#### Drift Detection Modes
+
+- **`managed-only`** (default): Compare only files explicitly synced from DevKit. Safe for repositories with additional project-specific files.
+- **`strict`**: Compare entire target directories and flag unmanaged files as drift. Use when you want to ensure no extra files exist.
+- **`all`**: Legacy mode that combines strict checking with unmanaged file detection.
+
+#### Provenance File
+
+After each sync, DevKit creates a `kb-labs/DEVKIT_SYNC.json` file that tracks:
+- DevKit version and timestamp
+- List of synced targets
+- Drift detection scope used
+
+Example:
+```json
+{
+  "source": "@kb-labs/devkit",
+  "version": "1.2.3",
+  "when": "2025-01-28T12:00:00Z",
+  "scope": "managed-only",
+  "items": ["ci", "agents", "cursorrules"]
+}
+```
+
+This file provides transparency about what DevKit manages and when it was last synced.
 
 ### Workflow Templates
 
