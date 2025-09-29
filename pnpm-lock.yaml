@@ -9,10 +9,10 @@ importers:
   .:
     dependencies:
       eslint-import-resolver-typescript:
-        specifier: ^3.6.1
+        specifier: ^3.10.1
         version: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.35.0)
       eslint-plugin-import:
-        specifier: ^2.29.1
+        specifier: ^2.32.0
         version: 2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0)(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.35.0)
     devDependencies:
       '@vitest/coverage-v8':

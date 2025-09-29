@@ -77,8 +77,8 @@
     }
   },
   "dependencies": {
-    "eslint-import-resolver-typescript": "^3.6.1",
-    "eslint-plugin-import": "^2.29.1"
+    "eslint-import-resolver-typescript": "^3.10.1",
+    "eslint-plugin-import": "^2.32.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.4",
