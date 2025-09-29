@@ -20,14 +20,20 @@ We will introduce a **Managed-Only Drift Strategy** that provides transparent ow
 
 ### Core Components
 
-#### 1. Provenance File
+#### 1. Provenance Files
 
-After each sync, DevKit writes a `kb-labs/DEVKIT_SYNC.json` file that contains:
+After each operation, DevKit writes provenance files in the `kb-labs/` directory:
+
+- **`DEVKIT_SYNC.json`** - Created after sync operations, tracks what was synced
+- **`DEVKIT_CHECK.json`** - Created after check operations, tracks drift analysis results
+
+Both files contain:
 - DevKit version and timestamp
-- An items list of all files copied
+- An items list of all targets processed
 - The drift detection scope used
+- Detailed operation report (for check operations)
 
-Example:
+**Sync file example:**
 ```json
 {
   "source": "@kb-labs/devkit",
@@ -35,6 +41,23 @@ Example:
   "when": "2025-01-28T12:00:00Z",
   "scope": "managed-only",
   "items": ["ci", "agents", "cursorrules"]
+}
+```
+
+**Check file example:**
+```json
+{
+  "source": "@kb-labs/devkit",
+  "version": "1.2.3",
+  "when": "2025-01-28T12:00:00Z",
+  "scope": "managed-only",
+  "items": ["ci", "agents", "cursorrules"],
+  "report": {
+    "schemaVersion": "2-min",
+    "devkit": { "version": "1.2.3" },
+    "summary": { "driftCount": 0 },
+    "targets": [...]
+  }
 }
 ```
 
@@ -69,10 +92,11 @@ Drift check logs ignored files separately for transparency when using `managed-o
 
 ## Rationale
 
-- **Transparent Ownership**: Provenance file provides clear audit trail of what DevKit manages
+- **Transparent Ownership**: Provenance files provide clear audit trail of what DevKit manages
 - **Flexible Enforcement**: Teams can choose appropriate drift detection strictness
 - **False Positive Prevention**: `managed-only` mode eliminates noise from project-specific files
 - **Scalable Design**: Strategy works as DevKit adds more sync targets
+- **Operation Separation**: Separate files for sync and check operations provide better traceability and debugging capabilities
 
 ## Consequences
 
@@ -110,18 +134,21 @@ Drift check logs ignored files separately for transparency when using `managed-o
 - [x] Implement drift detection modes (`managed-only`, `strict`, `all`)
 - [x] Add CLI flags for scope control (`--scope=managed-only|strict|all`)
 - [x] Support configuration via `kb-labs.config.json`
+- [x] Create separate provenance files for sync (`DEVKIT_SYNC.json`) and check (`DEVKIT_CHECK.json`) operations
 
-### Phase 2: Enhanced Features
+### Phase 2: Enhanced Features ✅
 
 - [x] Ignored files tracking for transparency
 - [x] JSON output mode for CI integration
 - [x] Timeout protection for large repositories
+- [x] Detailed operation reports in check provenance files
 
-### Phase 3: Documentation
+### Phase 3: Documentation ✅
 
-- [ ] Update docs/README to explain drift strategy
-- [ ] Add FAQ entry about project-specific workflows
-- [ ] Create migration guide for existing repositories
+- [x] Update docs/README to explain drift strategy
+- [x] Add FAQ entry about project-specific workflows
+- [x] Create migration guide for existing repositories
+- [x] Update provenance files documentation to reflect dual file approach
 
 ## Alternatives Considered
 

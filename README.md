@@ -294,14 +294,20 @@ The sync tool supports three drift detection modes:
 - **`strict`** ![Strict](https://img.shields.io/badge/Scope-Strict-red.svg?style=flat-square): Compare entire target directories and flag unmanaged files as drift. Use when you want to ensure no extra files exist.
 - **`all`** ![All](https://img.shields.io/badge/Scope-All-orange.svg?style=flat-square): Legacy mode that combines strict checking with unmanaged file detection.
 
-#### Provenance File
+#### Provenance Files
 
-After each sync, DevKit creates a `kb-labs/DEVKIT_SYNC.json` file that tracks:
+After each operation, DevKit creates provenance files in the `kb-labs/` directory:
+
+- **`DEVKIT_SYNC.json`** - Created after sync operations, tracks what was synced
+- **`DEVKIT_CHECK.json`** - Created after check operations, tracks drift analysis results
+
+Both files contain:
 - DevKit version and timestamp
-- List of synced targets
+- List of targets processed
 - Drift detection scope used
+- Detailed operation report (for check operations)
 
-Example:
+**Sync file example:**
 ```json
 {
   "source": "@kb-labs/devkit",
@@ -309,6 +315,23 @@ Example:
   "when": "2025-01-28T12:00:00Z",
   "scope": "managed-only",
   "items": ["ci", "agents", "cursorrules"]
+}
+```
+
+**Check file example:**
+```json
+{
+  "source": "@kb-labs/devkit",
+  "version": "1.2.3",
+  "when": "2025-01-28T12:00:00Z",
+  "scope": "managed-only",
+  "items": ["ci", "agents", "cursorrules"],
+  "report": {
+    "schemaVersion": "2-min",
+    "devkit": { "version": "1.2.3" },
+    "summary": { "driftCount": 0 },
+    "targets": [...]
+  }
 }
 ```
 
@@ -670,7 +693,7 @@ jobs:
 - **What is drift check?** — A feature that compares your project's DevKit assets with the latest version to detect outdated files.
 - **Can I customize sync behavior?** — Yes, use `kb-labs.config.json` to disable targets, override paths, or add custom sync targets.
 - **What are drift detection modes?** — Three modes: `managed-only` (default, safe for mixed repos), `strict` (flags unmanaged files), and `all` (legacy mode).
-- **What is the provenance file?** — `kb-labs/DEVKIT_SYNC.json` tracks what DevKit manages, when it was synced, and which scope was used.
+- **What are the provenance files?** — `kb-labs/DEVKIT_SYNC.json` tracks sync operations, `kb-labs/DEVKIT_CHECK.json` tracks drift check results. Both contain DevKit version, timestamp, targets, and scope used.
 - **Why do I get false drift reports?** — Use `managed-only` scope to ignore project-specific files that aren't managed by DevKit.
 - **Can I disable sync entirely?** — Yes, set `"enabled": false` in `kb-labs.config.json` or use `--help` to see all options.
 - **How do I sync only specific targets?** — Use `"only": ["ci", "agents"]` in config or `npx kb-devkit-sync ci agents` on command line.
