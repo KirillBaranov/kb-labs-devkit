@@ -5,6 +5,29 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
+// helpers
+async function readDevkitMeta() {
+  try {
+    const pkgJson = JSON.parse(await readFile(resolve(DEVKIT_ROOT, 'package.json'), 'utf8'));
+    return { name: pkgJson.name ?? '@kb-labs/devkit', version: pkgJson.version ?? null, description: pkgJson.description ?? null, commit: null };
+  } catch {
+    return { name: '@kb-labs/devkit', version: null, description: null, commit: null };
+  }
+}
+function nowIso() { return new Date().toISOString(); }
+function relFromDevkit(absPath) {
+  const p = absPath.startsWith(DEVKIT_ROOT) ? absPath.slice(DEVKIT_ROOT.length + 1) : absPath;
+  return p.replaceAll('\\', '/');
+}
+function relFromRepo(root, absPath) {
+  const p = absPath.startsWith(root) ? absPath.slice(root.length + 1) : absPath;
+  return p.replaceAll('\\', '/');
+}
+function cryptoRandomId() {
+  // 16 bytes → 32 hex chars
+  return createHash('sha256').update(String(Math.random()) + String(Date.now())).digest('hex').slice(0, 32);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DEVKIT_ROOT = resolve(__dirname, '..'); // .../devkit
@@ -186,20 +209,17 @@ function resolveTargets(effectiveMap, { onlyList, positional, disabledSet }) {
   return requested.filter(k => effectiveMap[k] && !disabledSet.has(k));
 }
 
-async function writeProvenance(root, { items = [], scope = 'managed-only' } = {}) {
-  let meta = null;
-  try {
-    const pkgJson = JSON.parse(await readFile(resolve(DEVKIT_ROOT, 'package.json'), 'utf8'));
-    meta = { name: pkgJson.name, version: pkgJson.version ?? null, description: pkgJson.description ?? null };
-  } catch { }
+async function writeProvenance(root, { items = [], scope = 'managed-only', report = null } = {}) {
+  const meta = await readDevkitMeta();
   await mkdir(resolve(root, 'kb-labs'), { recursive: true });
   const payload = {
-    source: meta?.name ?? '@kb-labs/devkit',
-    version: meta?.version ?? null,
-    when: new Date().toISOString(),
+    source: meta.name,
+    version: meta.version,
+    when: nowIso(),
     scope,
     items,
   };
+  if (report) payload.report = report;
   await writeFile(resolve(root, 'kb-labs/DEVKIT_SYNC.json'), JSON.stringify(payload, null, 2));
 }
 
@@ -236,42 +256,139 @@ async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
     }
   }
   log('check done', summary);
+
+  const meta = await readDevkitMeta();
+  const report = {
+    schemaVersion: '2-min',
+    devkit: { version: meta.version, commit: meta.commit },
+    repo: {},
+    run: { id: cryptoRandomId(), startedAt: null, finishedAt: null }, // no timing for check
+    summary: { filesChanged: summary.drift, kept: summary.ok, skipped: 0, conflicts: 0, mode: 'check', driftCount: summary.drift },
+    targets: details.map(d => ({
+      id: d.key,
+      status: (d.diffs.length || d.onlySrc.length || d.onlyDst.length) ? 'drift' : 'ok',
+      files: [
+        ...d.onlySrc.map(p => ({ fromPath: null, toPath: relFromRepo(root, p), action: 'missing-dst' })),
+        ...d.onlyDst.map(p => ({ fromPath: null, toPath: relFromRepo(root, p), action: 'foreign' })),
+        ...d.diffs.map(p => ({ fromPath: null, toPath: relFromRepo(root, p), action: 'changed' }))
+      ]
+    }))
+  };
+  // persist minimal check report
+  await writeProvenance(root, { items: details.map(d => d.key), scope, report });
+
   return { code: summary.drift > 0 ? 2 : 0, summary, details };
 }
 
 async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) {
   const details = [];
+  const startedAt = Date.now();
+  const reportTargets = [];
+  let filesChanged = 0, keptCount = 0, skippedCount = 0;
   const summary = { synced: 0, kept: 0, skipped: 0 };
+
   for (const key of targets) {
     const { from, to, type } = effectiveMap[key];
     const dst = to(root);
+    const tReport = { id: key, status: 'pending', why: [], files: [] };
+
     const srcOk = await exists(from);
     if (!srcOk) {
       summary.skipped++;
       details.push({ key, action: 'skip', reason: 'source-missing', from, dst });
       warn(`skip ${key} — source not found: ${from}`);
+      tReport.status = 'skipped';
+      reportTargets.push(tReport);
       continue;
     }
     if (!force && await exists(dst)) {
       summary.kept++;
       details.push({ key, action: 'keep', from, dst });
+      tReport.status = 'kept';
+      // lightweight single-file entry for files target; for dirs we only mark kept
+      if (type === 'file') {
+        const h = await sha256File(dst).catch(() => null);
+        tReport.files.push({
+          fromPath: relFromDevkit(from),
+          toPath: relFromRepo(root, dst),
+          action: 'keep',
+          hashBefore: h,
+          hashAfter: h
+        });
+      }
+      keptCount++;
+      reportTargets.push(tReport);
       if (verbose) log(`keep ${key} — exists: ${dst}`);
       continue;
     }
     if (dryRun) {
       summary.synced++;
       details.push({ key, action: 'plan-sync', from, dst, type });
+      tReport.status = 'planned';
+      reportTargets.push(tReport);
       log(`[dry-run] ${key} -> ${dst}`);
       continue;
     }
+    let filePairs = [];
+    if (type === 'file') {
+      filePairs = [[from, dst]];
+    } else {
+      const srcFiles = await listFilesRec(from);
+      filePairs = srcFiles.map(sf => {
+        const rel = sf.slice(from.length + 1);
+        return [sf, join(dst, rel)];
+      });
+    }
+    // capture before-state
+    const beforeState = await Promise.all(filePairs.map(async ([srcFile, dstFile]) => {
+      const existed = await exists(dstFile);
+      const hb = existed ? await sha256File(dstFile).catch(() => null) : null;
+      return { srcFile, dstFile, existed, hashBefore: hb };
+    }));
+
     if (type === 'file') await ensureDirForFile(dst); else await mkdir(dst, { recursive: true });
     await cp(from, dst, { recursive: true, force: true });
+
+    const afterState = await Promise.all(beforeState.map(async (s) => {
+      const ha = await sha256File(s.dstFile).catch(() => null);
+      // source hash (after copy) equals destination now; action by comparing before/after
+      const action = s.existed ? ((s.hashBefore && ha && s.hashBefore === ha) ? 'keep' : 'update') : 'create';
+      if (action !== 'keep') filesChanged++;
+      tReport.files.push({
+        fromPath: relFromDevkit(s.srcFile),
+        toPath: relFromRepo(root, s.dstFile),
+        action,
+        hashBefore: s.hashBefore ?? null,
+        hashAfter: ha ?? null
+      });
+      return { ...s, hashAfter: ha, action };
+    }));
+    // finalize target status + counters + pretty log
+    const created = afterState.filter(s => s.action === 'create').length;
+    const updated = afterState.filter(s => s.action === 'update').length;
+    const keptF = afterState.filter(s => s.action === 'keep').length;
+    tReport.status = 'applied';
+    reportTargets.push(tReport);
     summary.synced++;
     details.push({ key, action: 'synced', from, dst, type });
+    log(`→ ${key}: ${created} created, ${updated} updated, ${keptF} kept`);
     log(`synced ${key} -> ${dst}`);
   }
+  const finishedAt = Date.now();
   log('sync done', summary, `(force=${force}, dry-run=${!!dryRun})`);
-  return { code: 0, summary, details };
+  return {
+    code: 0,
+    summary,
+    details,
+    _report: {
+      targets: reportTargets,
+      filesChanged,
+      keptCount,
+      skippedCount,
+      startedAt,
+      finishedAt
+    }
+  };
 }
 
 function printHelp(effectiveMap = BASE_MAP) {
@@ -313,6 +430,8 @@ async function printVersion() {
 
 export async function run({ args = [] } = {}) {
   const { help, version, check, force, verbose, json, dryRun, ciOnly, list, timeoutMs, onlyList, positional, scope: scopeFromCli } = parseArgs(args);
+  const devkitMeta = await readDevkitMeta();
+  log(`DevKit ${devkitMeta.version ?? 'unknown'} — scope=${(process.env.KB_DEVKIT_SYNC_SCOPE || '').toString() || 'managed-only'}`);
   const root = process.cwd();
   const cfg = await readProjectConfig(root);
 
@@ -350,6 +469,8 @@ export async function run({ args = [] } = {}) {
   const pos = positional.filter(Boolean);
   const targets = resolveTargets(map, { onlyList: select, positional: pos, disabledSet });
 
+  log(`Targets: [${targets.join(', ')}]`);
+
   // resolve scope precedence: CLI → config → default
   let scope = scopeFromCli || cfg?.sync?.scope || 'managed-only';
   if (!['managed-only', 'strict', 'all'].includes(scope)) scope = 'managed-only';
@@ -361,14 +482,34 @@ export async function run({ args = [] } = {}) {
   const t = setTimeout(() => { controller.abort(); }, Math.max(0, timeoutMs));
 
   try {
+    log('Starting devkit sync...');
     if (check) {
       const res = await runCheck(root, map, targets, { verbose, scope });
       if (json) console.log(JSON.stringify({ mode: 'check', ...res }, null, 2));
       return res.code;
     } else {
       const res = await runSync(root, map, targets, { force: force || !!cfg?.sync?.force, verbose, dryRun });
-      // write provenance with items + scope
-      await writeProvenance(root, { items: targets, scope });
+      // compose minimal embedded report
+      const report = {
+        schemaVersion: '2-min',
+        devkit: { version: devkitMeta.version, commit: devkitMeta.commit },
+        repo: {},
+        run: {
+          id: cryptoRandomId(),
+          startedAt: new Date(res?._report?.startedAt ?? Date.now()).toISOString(),
+          finishedAt: new Date(res?._report?.finishedAt ?? Date.now()).toISOString()
+        },
+        summary: {
+          filesChanged: res?._report?.filesChanged ?? 0,
+          kept: res.summary.kept,
+          skipped: res.summary.skipped,
+          conflicts: 0,
+          mode: 'sync'
+        },
+        targets: (res?._report?.targets ?? [])
+      };
+      // write provenance with items + scope + report
+      await writeProvenance(root, { items: targets, scope, report });
       if (json) console.log(JSON.stringify({ mode: 'sync', ...res }, null, 2));
       return res.code;
     }
