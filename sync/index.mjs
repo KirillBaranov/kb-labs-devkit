@@ -16,23 +16,21 @@ async function readDevkitMeta() {
 }
 function nowIso() { return new Date().toISOString(); }
 function relFromDevkit(absPath) {
-  const p = absPath.startsWith(DEVKIT_ROOT) ? absPath.slice(DEVKIT_ROOT.length + 1) : absPath;
-  return p.replaceAll('\\', '/');
+  const p = absPath && absPath.startsWith(DEVKIT_ROOT) ? absPath.slice(DEVKIT_ROOT.length + 1) : absPath;
+  return (p ?? '').replaceAll('\\', '/');
 }
 function relFromRepo(root, absPath) {
-  const p = absPath.startsWith(root) ? absPath.slice(root.length + 1) : absPath;
-  return p.replaceAll('\\', '/');
+  const p = absPath && absPath.startsWith(root) ? absPath.slice(root.length + 1) : absPath;
+  return (p ?? '').replaceAll('\\', '/');
 }
 function cryptoRandomId() {
-  // 16 bytes → 32 hex chars
   return createHash('sha256').update(String(Math.random()) + String(Date.now())).digest('hex').slice(0, 32);
 }
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const DEVKIT_ROOT = resolve(__dirname, '..'); // .../devkit
+const DEVKIT_ROOT = resolve(__dirname, '..');
 
-// Map of sync targets shipped with DevKit
 const BASE_MAP = {
   agents: {
     from: resolve(DEVKIT_ROOT, 'agents'),
@@ -57,29 +55,25 @@ const BASE_MAP = {
 };
 
 function resolveFromDevkit(p) {
-  // absolute path stays absolute; otherwise resolve from DEVKIT_ROOT
   return p && p.startsWith('/') ? p : resolve(DEVKIT_ROOT, p);
 }
 
 function buildEffectiveMap(projectCfg) {
-  // shallow clone of BASE_MAP with functions preserved
   const map = Object.fromEntries(Object.entries(BASE_MAP).map(([k, v]) => [k, { ...v }]));
   const syncCfg = projectCfg?.sync || {};
 
-  // overrides: { targetKey: { from, to, type } }
   if (syncCfg.overrides && typeof syncCfg.overrides === 'object') {
     for (const [key, ov] of Object.entries(syncCfg.overrides)) {
-      if (!map[key]) continue; // ignore unknown keys
+      if (!map[key]) continue;
       if (ov.from) map[key].from = resolveFromDevkit(String(ov.from));
       if (ov.to) map[key].to = (root) => resolve(root, String(ov.to));
       if (ov.type) map[key].type = String(ov.type);
     }
   }
 
-  // extra targets: { key: { from, to, type } }
   if (syncCfg.targets && typeof syncCfg.targets === 'object') {
     for (const [key, t] of Object.entries(syncCfg.targets)) {
-      if (!t?.from || !t?.to) continue; // must have both
+      if (!t?.from || !t?.to) continue;
       map[key] = {
         from: resolveFromDevkit(String(t.from)),
         to: (root) => resolve(root, String(t.to)),
@@ -190,7 +184,6 @@ function parseArgs(argv) {
   const timeoutMs = Number(kv.get('--timeout') ?? process.env.KB_DEVKIT_SYNC_TIMEOUT_MS ?? 30000);
   const onlyList = kv.get('--only')?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
 
-  // scope: managed-only (default) | strict | all
   const scopeRaw = (kv.get('--scope') ?? process.env.KB_DEVKIT_SYNC_SCOPE ?? '').toString();
   const scope = ['managed-only', 'strict', 'all'].includes(scopeRaw) ? scopeRaw : 'managed-only';
 
@@ -209,7 +202,7 @@ function resolveTargets(effectiveMap, { onlyList, positional, disabledSet }) {
   return requested.filter(k => effectiveMap[k] && !disabledSet.has(k));
 }
 
-async function writeProvenance(root, { items = [], scope = 'managed-only', report = null } = {}) {
+async function writeProvenance(root, { items = [], scope = 'managed-only', report = null, fileName = 'DEVKIT_SYNC.json' } = {}) {
   const meta = await readDevkitMeta();
   await mkdir(resolve(root, 'kb-labs'), { recursive: true });
   const payload = {
@@ -220,13 +213,14 @@ async function writeProvenance(root, { items = [], scope = 'managed-only', repor
     items,
   };
   if (report) payload.report = report;
-  await writeFile(resolve(root, 'kb-labs/DEVKIT_SYNC.json'), JSON.stringify(payload, null, 2));
+  await writeFile(resolve(root, `kb-labs/${fileName}`), JSON.stringify(payload, null, 2));
 }
 
 async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
   const details = [];
   const summary = { ok: 0, drift: 0 };
   const considerOnlyDst = scope !== 'managed-only';
+  const checkTargets = [];
 
   for (const key of targets) {
     const { from, to, type } = effectiveMap[key];
@@ -246,6 +240,49 @@ async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
       item.ignored = { onlyDst: res.onlyDst.length };
     }
 
+    const files = [];
+    async function addChangedWithHashes(pDstAbs) {
+      const rel = pDstAbs.startsWith(dst) ? pDstAbs.slice(dst.length + 1) : null;
+      const pSrcAbs = rel ? join(from, rel) : null;
+      let hashSrc = null, hashDst = null;
+      try { hashDst = await sha256File(pDstAbs); } catch { }
+      if (pSrcAbs) { try { hashSrc = await sha256File(pSrcAbs); } catch { } }
+      files.push({
+        fromPath: rel ? relFromDevkit(pSrcAbs) : null,
+        toPath: relFromRepo(root, pDstAbs),
+        action: 'changed',
+        hashBefore: hashDst,
+        hashAfter: hashSrc
+      });
+    }
+    for (const p of res.diffs) { await addChangedWithHashes(p); }
+    for (const p of res.onlySrc) {
+      const rel = p.startsWith(dst) ? p.slice(dst.length + 1) : null;
+      const pSrcAbs = rel ? join(from, rel) : null;
+      let hashSrc = null; try { if (pSrcAbs) hashSrc = await sha256File(pSrcAbs); } catch { }
+      files.push({
+        fromPath: rel ? relFromDevkit(pSrcAbs) : null,
+        toPath: relFromRepo(root, p),
+        action: 'missing-dst',
+        hashBefore: null,
+        hashAfter: hashSrc
+      });
+    }
+    if (considerOnlyDst) {
+      for (const p of res.onlyDst) {
+        let hashDst = null; try { hashDst = await sha256File(p); } catch { }
+        files.push({
+          fromPath: null,
+          toPath: relFromRepo(root, p),
+          action: 'foreign',
+          hashBefore: hashDst,
+          hashAfter: null
+        });
+      }
+    }
+    const tStatus = (res.diffs.length || res.onlySrc.length || (considerOnlyDst ? res.onlyDst.length : 0)) ? 'drift' : 'ok';
+    checkTargets.push({ id: key, status: tStatus, files });
+
     details.push(item);
     if (changed) {
       summary.drift++;
@@ -262,20 +299,12 @@ async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
     schemaVersion: '2-min',
     devkit: { version: meta.version, commit: meta.commit },
     repo: {},
-    run: { id: cryptoRandomId(), startedAt: null, finishedAt: null }, // no timing for check
+    run: { id: cryptoRandomId(), startedAt: null, finishedAt: null },
     summary: { filesChanged: summary.drift, kept: summary.ok, skipped: 0, conflicts: 0, mode: 'check', driftCount: summary.drift },
-    targets: details.map(d => ({
-      id: d.key,
-      status: (d.diffs.length || d.onlySrc.length || d.onlyDst.length) ? 'drift' : 'ok',
-      files: [
-        ...d.onlySrc.map(p => ({ fromPath: null, toPath: relFromRepo(root, p), action: 'missing-dst' })),
-        ...d.onlyDst.map(p => ({ fromPath: null, toPath: relFromRepo(root, p), action: 'foreign' })),
-        ...d.diffs.map(p => ({ fromPath: null, toPath: relFromRepo(root, p), action: 'changed' }))
-      ]
-    }))
+    targets: checkTargets
   };
-  // persist minimal check report
-  await writeProvenance(root, { items: details.map(d => d.key), scope, report });
+  await writeProvenance(root, { items: checkTargets.map(t => t.id), scope, report, fileName: 'DEVKIT_CHECK.json' });
+  log('check report written to', 'kb-labs/DEVKIT_CHECK.json');
 
   return { code: summary.drift > 0 ? 2 : 0, summary, details };
 }
@@ -305,7 +334,6 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
       summary.kept++;
       details.push({ key, action: 'keep', from, dst });
       tReport.status = 'kept';
-      // lightweight single-file entry for files target; for dirs we only mark kept
       if (type === 'file') {
         const h = await sha256File(dst).catch(() => null);
         tReport.files.push({
@@ -339,7 +367,6 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
         return [sf, join(dst, rel)];
       });
     }
-    // capture before-state
     const beforeState = await Promise.all(filePairs.map(async ([srcFile, dstFile]) => {
       const existed = await exists(dstFile);
       const hb = existed ? await sha256File(dstFile).catch(() => null) : null;
@@ -351,7 +378,6 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
 
     const afterState = await Promise.all(beforeState.map(async (s) => {
       const ha = await sha256File(s.dstFile).catch(() => null);
-      // source hash (after copy) equals destination now; action by comparing before/after
       const action = s.existed ? ((s.hashBefore && ha && s.hashBefore === ha) ? 'keep' : 'update') : 'create';
       if (action !== 'keep') filesChanged++;
       tReport.files.push({
@@ -363,7 +389,6 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
       });
       return { ...s, hashAfter: ha, action };
     }));
-    // finalize target status + counters + pretty log
     const created = afterState.filter(s => s.action === 'create').length;
     const updated = afterState.filter(s => s.action === 'update').length;
     const keptF = afterState.filter(s => s.action === 'keep').length;
@@ -435,7 +460,6 @@ export async function run({ args = [] } = {}) {
   const root = process.cwd();
   const cfg = await readProjectConfig(root);
 
-  // Allow turning off sync entirely from config
   if (cfg?.sync?.enabled === false) {
     log('sync disabled by kb-labs.config.json');
     return 0;
@@ -444,14 +468,12 @@ export async function run({ args = [] } = {}) {
   const disabledSet = new Set(cfg?.sync?.disabled ?? []);
   const map = buildEffectiveMap(cfg);
 
-  // If user asked to list available targets, do it early and exit
   if (list) {
     console.log('[devkit-sync] available targets:', Object.keys(map).join(', '));
     return 0;
   }
 
   const cfgOnly = Array.isArray(cfg?.sync?.only) ? cfg.sync.only.filter(s => typeof s === 'string' && s.length > 0) : [];
-  // Priority: CLI --only > config `sync.only`; positional arguments are additive
   let select = onlyList.length ? onlyList.slice() : cfgOnly.slice();
 
   if (ciOnly) {
@@ -462,7 +484,6 @@ export async function run({ args = [] } = {}) {
     }
   }
 
-  // Deduplicate while preserving order
   const seen = new Set();
   select = select.filter(k => (k && !seen.has(k) && seen.add(k)));
 
@@ -471,7 +492,6 @@ export async function run({ args = [] } = {}) {
 
   log(`Targets: [${targets.join(', ')}]`);
 
-  // resolve scope precedence: CLI → config → default
   let scope = scopeFromCli || cfg?.sync?.scope || 'managed-only';
   if (!['managed-only', 'strict', 'all'].includes(scope)) scope = 'managed-only';
 
@@ -489,7 +509,6 @@ export async function run({ args = [] } = {}) {
       return res.code;
     } else {
       const res = await runSync(root, map, targets, { force: force || !!cfg?.sync?.force, verbose, dryRun });
-      // compose minimal embedded report
       const report = {
         schemaVersion: '2-min',
         devkit: { version: devkitMeta.version, commit: devkitMeta.commit },
@@ -508,8 +527,7 @@ export async function run({ args = [] } = {}) {
         },
         targets: (res?._report?.targets ?? [])
       };
-      // write provenance with items + scope + report
-      await writeProvenance(root, { items: targets, scope, report });
+      await writeProvenance(root, { items: targets, scope, report, fileName: 'DEVKIT_SYNC.json' });
       if (json) console.log(JSON.stringify({ mode: 'sync', ...res }, null, 2));
       return res.code;
     }
