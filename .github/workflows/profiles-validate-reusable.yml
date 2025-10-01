@@ -1,0 +1,67 @@
+name: profiles-validate
+
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        type: string
+        default: '20'
+      soft_fail:
+        type: boolean
+        default: true      # don't fail, while profiles are in development
+      working_directory:
+        type: string
+        default: '.'       # for monorepo — can specify the package path
+      log_level:
+        type: string
+        default: 'info'    # debug|info|warn|error
+      fixtures_dir:
+        type: string
+        default: ''        # optional, if there are presets/fixtures
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect .kb/profiles
+        id: detect
+        shell: bash
+        run: |
+          ROOT="${{ inputs.working_directory }}"
+          if [ -d "$ROOT/.kb/profiles" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "[profiles] found at $ROOT/.kb/profiles"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "[profiles] not found, skip"
+          fi
+
+      - name: Setup Node & pnpm
+        if: steps.detect.outputs.found == 'true'
+        uses: KirillBaranov/kb-labs-devkit/.github/actions/setup-node-pnpm@main
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: Install deps
+        if: steps.detect.outputs.found == 'true'
+        run: pnpm i --frozen-lockfile
+        working-directory: ${{ inputs.working_directory }}
+
+      - name: Validate profiles
+        if: steps.detect.outputs.found == 'true'
+        continue-on-error: ${{ inputs.soft_fail }}
+        env:
+          LOG_LEVEL: ${{ inputs.log_level }}
+          KB_PROFILES_FIXTURES: ${{ inputs.fixtures_dir }}
+        shell: bash
+        run: |
+          # if kb-CLI is available, use it, otherwise use the package schemas
+          if pnpm -s kb --help >/dev/null 2>&1; then
+            pnpm -s kb profiles validate
+          else
+            pnpm -F @kb-labs/profile-schemas -s run schemas:check
+          fi
+        working-directory: ${{ inputs.working_directory }}
