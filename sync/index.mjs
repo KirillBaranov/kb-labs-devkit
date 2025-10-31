@@ -34,7 +34,7 @@ const DEVKIT_ROOT = resolve(__dirname, '..');
 const BASE_MAP = {
   agents: {
     from: resolve(DEVKIT_ROOT, 'agents'),
-    to: (root) => resolve(root, 'kb-labs/agents'),
+    to: (root) => resolve(root, '.kb/devkit/agents'),
     type: 'dir',
   },
   cursorrules: {
@@ -204,7 +204,7 @@ function resolveTargets(effectiveMap, { onlyList, positional, disabledSet }) {
 
 async function writeProvenance(root, { items = [], scope = 'managed-only', report = null, fileName = 'DEVKIT_SYNC.json' } = {}) {
   const meta = await readDevkitMeta();
-  await mkdir(resolve(root, 'kb-labs'), { recursive: true });
+  await mkdir(resolve(root, '.kb/devkit/tmp'), { recursive: true });
   const payload = {
     source: meta.name,
     version: meta.version,
@@ -213,7 +213,7 @@ async function writeProvenance(root, { items = [], scope = 'managed-only', repor
     items,
   };
   if (report) payload.report = report;
-  await writeFile(resolve(root, `kb-labs/${fileName}`), JSON.stringify(payload, null, 2));
+  await writeFile(resolve(root, `.kb/devkit/tmp/${fileName}`), JSON.stringify(payload, null, 2));
 }
 
 async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
@@ -304,7 +304,7 @@ async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
     targets: checkTargets
   };
   await writeProvenance(root, { items: checkTargets.map(t => t.id), scope, report, fileName: 'DEVKIT_CHECK.json' });
-  log('check report written to', 'kb-labs/DEVKIT_CHECK.json');
+  log('check report written to', '.kb/devkit/tmp/DEVKIT_CHECK.json');
 
   return { code: summary.drift > 0 ? 2 : 0, summary, details };
 }

@@ -114,6 +114,8 @@ export default config
 }
 ```
 
+> **Build Convention**: All KB Labs packages use `"build": "tsup"` as the standard convention. The `tsup` preset handles both JavaScript bundling and TypeScript declaration generation (`dts: true`). TypeScript `tsconfig.json` with `references` is for IDE support and type-checking only, not for build orchestration. See [ADR-0009](./docs/adr/0009-unified-build-convention.md) for details.
+
 ## Preset details
 
 ### TypeScript (`tsconfig`)
@@ -251,7 +253,7 @@ Create a `kb-labs.config.json` file in your project root to customize sync behav
 #### Available Targets
 
 By default, the sync tool includes these targets:
-- **`agents`**: AI agent definitions → `kb-labs/agents/`
+- **`agents`**: AI agent definitions → `.kb/devkit/agents/`
 - **`cursorrules`**: Cursor AI rules → `.cursorrules`
 - **`vscode`**: VS Code settings → `.vscode/settings.json`
 
@@ -296,7 +298,7 @@ The sync tool supports three drift detection modes:
 
 #### Provenance Files
 
-After each operation, DevKit creates provenance files in the `kb-labs/` directory:
+After each operation, DevKit creates provenance files in the `.kb/devkit/tmp/` directory:
 
 - **`DEVKIT_SYNC.json`** - Created after sync operations, tracks what was synced
 - **`DEVKIT_CHECK.json`** - Created after check operations, tracks drift analysis results
