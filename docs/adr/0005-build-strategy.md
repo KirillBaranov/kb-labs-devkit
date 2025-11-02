@@ -1,8 +1,10 @@
-# ADR 0005: Build & Types Strategy for KB Labs Monorepos
+# ADR-0005: Build & Types Strategy for KB Labs Monorepos
 
-- **Status:** Accepted
-- **Date:** 2025-09-24
-- **Author:** KB Labs Team
+**Date:** 2025-09-24
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, architecture]
 
 ## Context
 We maintain several monorepositories (core/cli/shared/... + products). Previously, type generation went through `tsc --emitDeclarationOnly`, while JS bundling was through tsup. Several repositories encountered problems:

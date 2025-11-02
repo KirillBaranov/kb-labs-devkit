@@ -1,8 +1,10 @@
-# ADR 0007: Reusable Workflow Strategy for CI Synchronization
+# ADR-0007: Reusable Workflow Strategy for CI Synchronization
 
-- **Status:** Accepted
-- **Date:** 2025-09-27
-- **Author:** KB Labs Team
+**Date:** 2025-09-27
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, process]
 
 ## Context
 

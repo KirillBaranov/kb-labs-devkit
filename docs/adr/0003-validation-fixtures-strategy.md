@@ -1,8 +1,10 @@
-# ADR 0003: Validation Fixtures Strategy
+# ADR-0003: Validation Fixtures Strategy
 
-- **Status:** Accepted
-- **Date:** 2025-09-20
-- **Author:** KB Labs Team
+**Date:** 2025-09-20
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, testing]
 
 ## Context
 

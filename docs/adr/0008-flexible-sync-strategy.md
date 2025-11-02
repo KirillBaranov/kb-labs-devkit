@@ -1,8 +1,10 @@
-# ADR 0008: Flexible Sync and Drift Management in DevKit
+# ADR-0008: Flexible Sync and Drift Management in DevKit
 
-- **Status:** Accepted
-- **Date:** 2025-01-28
-- **Author:** KB Labs Team
+**Date:** 2025-01-28
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, process]
 
 ## Context
 
@@ -22,7 +24,7 @@ We will introduce a **Managed-Only Drift Strategy** that provides transparent ow
 
 #### 1. Provenance Files
 
-After each operation, DevKit writes provenance files in the `kb-labs/` directory:
+After each operation, DevKit writes provenance files in the `.kb/devkit/tmp/` directory:
 
 - **`DEVKIT_SYNC.json`** - Created after sync operations, tracks what was synced
 - **`DEVKIT_CHECK.json`** - Created after check operations, tracks drift analysis results

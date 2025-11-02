@@ -3,11 +3,13 @@
 > ADR 0005 defines *what tools and strategies* we use for builds and type generation.  
 > ADR 0006 defines *how we orchestrate build order and dependency resolution* in monorepos.  
 
-# ADR 0006: Sequential Build & Type Safety in KB Labs Monorepos
+# ADR-0006: Sequential Build & Type Safety in KB Labs Monorepos
 
-- **Status:** Accepted
-- **Date:** 2025-09-24
-- **Author:** KB Labs Team
+**Date:** 2025-09-24
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, architecture]
 
 ## Context
 KB Labs monorepos (core, cli, shared, products) rely on multiple internal packages with cross-dependencies.  

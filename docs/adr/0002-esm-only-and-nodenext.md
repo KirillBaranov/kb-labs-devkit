@@ -1,8 +1,10 @@
-# ADR 0002: ESM-only and NodeNext Module Resolution
+# ADR-0002: ESM-only and NodeNext Module Resolution
 
-- **Status:** Accepted
-- **Date:** 2025-09-18
-- **Author:** KB Labs Team
+**Date:** 2025-09-18
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, architecture]
 
 ## Context
 Historically, Node.js supported CommonJS (CJS) as the default module format.  

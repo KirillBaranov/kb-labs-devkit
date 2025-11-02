@@ -1,8 +1,10 @@
-# ADR 0009: Unified Build Convention for KB Labs Ecosystem
+# ADR-0009: Unified Build Convention for KB Labs Ecosystem
 
-- **Status:** Accepted
-- **Date:** 2025-10-21
-- **Author:** KB Labs Team
+**Date:** 2025-10-21
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, architecture, process]
 
 ## Context
 

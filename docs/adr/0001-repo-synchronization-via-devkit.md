@@ -1,8 +1,10 @@
-# ADR 0006: Repo Synchronization via DevKit
+# ADR-0001: Repo Synchronization via DevKit
 
-- **Status:** Accepted
-- **Date:** 2025-09-18
-- **Author:** KB Labs Team
+**Date:** 2025-09-18
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, process]
 
 ## Context
 KB Labs maintains multiple repositories (core, cli, shared, ai-review, templates). They all share non-domain tooling: ESLint/Prettier configs, TS baselines, Vitest presets, Tsup presets, GitHub reusable workflows, Cursor agents, and workspace conventions.
