@@ -1,52 +1,22 @@
-# @kb-labs/devkit
+# KB Labs DevKit (@kb-labs/devkit)
 
-[![npm version](https://img.shields.io/npm/v/@kb-labs/devkit.svg?style=flat-square)](https://www.npmjs.com/package/@kb-labs/devkit)
-[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg?style=flat-square)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg?style=flat-square)](https://www.typescriptlang.org/)
-[![ESM](https://img.shields.io/badge/Module-ESM-purple.svg?style=flat-square)](https://nodejs.org/api/esm.html)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
+> **A cohesive set of presets and configurations for the `@kb-labs` ecosystem.** TypeScript `tsconfig`, ESLint, Prettier, Vitest, Tsup, and reusable GitHub Actions. The goal is to maximize automation, enforce consistent standards, and eliminate copy-paste across new projects.
 
-A cohesive set of presets and configurations for the `@kb-labs` ecosystem: TypeScript `tsconfig`, ESLint, Prettier, Vitest, Tsup, and reusable GitHub Actions. The goal is to maximize automation, enforce consistent standards, and eliminate copy-paste across new projects.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-9.0.0+-orange.svg)](https://pnpm.io/)
 
-## Features
+## 🎯 Vision
 
-- **TypeScript** ![TypeScript](https://img.shields.io/badge/TypeScript-NodeNext-blue.svg?style=flat-square): ready-to-use `tsconfig` for libraries, Node services, and CLIs.
-- **ESLint** ![ESLint](https://img.shields.io/badge/ESLint-9.0+-4B32C3.svg?style=flat-square): a base preset plus variations for lib/node/cli.
-- **Prettier** ![Prettier](https://img.shields.io/badge/Prettier-Formatted-F7B93E.svg?style=flat-square): a single opinionated formatting profile.
-- **Vitest** ![Vitest](https://img.shields.io/badge/Vitest-Testing-6E9F18.svg?style=flat-square): a base test/coverage profile with lib/node overlays.
-- **Tsup** ![Tsup](https://img.shields.io/badge/Tsup-ESM%20Build-FF6B6B.svg?style=flat-square): standard builds for libraries and Node services.
-- **GitHub Actions** ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-Reusable-2088FF.svg?style=flat-square): reusable CI/PR/Release workflows.
-- **AI Agents** ![AI](https://img.shields.io/badge/AI%20Agents-Cursor-00D4AA.svg?style=flat-square): standardized Cursor agents for common development tasks.
-- **Fixtures** ![Fixtures](https://img.shields.io/badge/Fixtures-Validation-9C27B0.svg?style=flat-square): validation fixtures to ensure DevKit changes don't break downstream consumers.
-- **Scripts** ![Scripts](https://img.shields.io/badge/Scripts-Automated-FF9800.svg?style=flat-square): automated fixture management for testing all presets.
+KB Labs DevKit provides a cohesive set of presets and configurations for the `@kb-labs` ecosystem: TypeScript `tsconfig`, ESLint, Prettier, Vitest, Tsup, and reusable GitHub Actions. The goal is to maximize automation, enforce consistent standards, and eliminate copy-paste across new projects.
 
-## AI Agents
+The project solves the problem of inconsistent tooling configurations across KB Labs projects by providing a single source of truth for all development tooling. Instead of copying configs between projects, developers can simply extend DevKit presets, ensuring consistency and reducing maintenance overhead.
 
-This DevKit includes pre-configured AI agents that can be synced into any KB Labs project. These agents are opinionated around KB Labs workflows (pnpm, devkit presets, monorepo). Outside this ecosystem, adapt accordingly.
+This project is the foundation for all KB Labs tooling and is used by every project in the ecosystem. It includes a powerful sync system that automatically keeps projects up-to-date with the latest DevKit assets.
 
-| Agent              | Purpose                                                        |
-|--------------------|----------------------------------------------------------------|
-| **DevKit Maintainer** ![Maintainer](https://img.shields.io/badge/DevKit-Maintainer-2196F3.svg?style=flat-square) | Enforce unified tooling (tsconfig, eslint, prettier, vitest, tsup, CI) |
-| **Test Generator** ![Tests](https://img.shields.io/badge/Test-Generator-4CAF50.svg?style=flat-square)    | Generate and maintain pragmatic unit tests                    |
-| **Docs Drafter** ![Docs](https://img.shields.io/badge/Docs-Drafter-FF9800.svg?style=flat-square)      | Draft and update README/CONTRIBUTING/ADR docs                 |
-| **Release Manager** ![Release](https://img.shields.io/badge/Release-Manager-9C27B0.svg?style=flat-square)   | Prepare release plans, changelog, and GitHub releases         |
+## 🚀 Quick Start
 
-Each agent includes:
-- **Prompt**: AI instructions and context
-- **Runbook**: step-by-step procedures
-- **Context**: file patterns and permissions
-
-To sync agents into your project:
-```bash
-# Copy agent definitions from this DevKit
-pnpm agents:sync
-```
-
-They are designed for Cursor AI agents, but can also be adapted for GitHub Copilot Chat or other IDE assistants.
-
-See [`AGENTS.md`](./AGENTS.md) for detailed agent documentation.
-
-## Install
+### Installation
 
 ```bash
 pnpm add -D @kb-labs/devkit
@@ -54,46 +24,41 @@ pnpm add -D @kb-labs/devkit
 npm i -D @kb-labs/devkit
 ```
 
-## Quick start
+### Basic Setup
 
-- **Node project** (TS + Tsup + Vitest + ESLint + Prettier)
-  - `tsconfig.json`:
+#### Node Project (TS + Tsup + Vitest + ESLint + Prettier)
 
+**tsconfig.json:**
 ```json
 {
   "extends": "@kb-labs/devkit/tsconfig/node.json"
 }
 ```
 
-  - `tsup.config.ts`:
-
-```ts
+**tsup.config.ts:**
+```typescript
 import config from '@kb-labs/devkit/tsup/node.js'
 export default config
 ```
 
-  - `vitest.config.ts`:
-
-```ts
+**vitest.config.ts:**
+```typescript
 import config from '@kb-labs/devkit/vitest/node.js'
 export default config
 ```
 
-  - `eslint.config.js` (ESLint 9 flat config):
-
-```js
+**eslint.config.js** (ESLint 9 flat config):
+```javascript
 import config from '@kb-labs/devkit/eslint/node.js'
 export default config
 ```
 
-  - `.prettierrc.json`:
-
+**.prettierrc.json:**
 ```json
 "@kb-labs/devkit/prettier/index.json"
 ```
 
-  - `package.json` (example):
-
+**package.json** (example):
 ```json
 {
   "type": "module",
@@ -116,94 +81,11 @@ export default config
 
 > **Build Convention**: All KB Labs packages use `"build": "tsup"` as the standard convention. The `tsup` preset handles both JavaScript bundling and TypeScript declaration generation (`dts: true`). TypeScript `tsconfig.json` with `references` is for IDE support and type-checking only, not for build orchestration. See [ADR-0009](./docs/adr/0009-unified-build-convention.md) for details.
 
-## Preset details
+### Repository Synchronization
 
-### TypeScript (`tsconfig`)
-Available configs:
-- `base.json`: strict base (ES2022, NodeNext, strict typing, isolatedModules)
-- `cli.json`: CLI application preset
-- `lib.json`: library preset  
-- `node.json`: Node service – declarations, source maps, `include: ["src"]`
-
-All configs use `module: "NodeNext"` and `moduleResolution: "NodeNext"` for proper ESM support.
-
-**Usage:**
-```json
-{
-  "extends": "@kb-labs/devkit/tsconfig/node.json"
-}
-```
-
-Or import specific files:
-```json
-{
-  "extends": "@kb-labs/devkit/tsconfig/base.json"
-}
-```
-
-### ESLint
-- `eslint/node.js`: ESLint 9 flat config with TypeScript support.
-
-Features:
-- Uses `typescript-eslint` recommended rules
-- Ignores `dist/`, `coverage/`, `node_modules/`, `.yalc/`
-- Allows unused variables with `_` prefix
-- Consistent type imports
-
-Run:
-```bash
-pnpm eslint .
-```
-
-### Prettier
-- `prettier/index.json`: shared style (no semicolons, single quotes, width 100).
-
-Run:
-```bash
-pnpm prettier -c .
-```
-
-### Tsup
-- `tsup/node.js`: ESM-only build (target ES2022, sourcemap, clean, treeshake).
-
-Features:
-- ESM format only
-- ES2022 target
-- Source maps enabled
-- Tree shaking enabled
-- Clean output directory
-
-Run:
-```bash
-pnpm tsup
-```
-
-### Vitest
-- `vitest/node.js`: Node environment with coverage support.
-
-Features:
-- Node environment
-- Coverage with V8 provider (disabled by default)
-- Excludes `node_modules/`, `dist/`, etc.
-- Strict coverage thresholds when enabled
-
-Run:
-```bash
-pnpm vitest
-```
-
-## Repository Synchronization ![Sync](https://img.shields.io/badge/Sync-Automated-00BCD4.svg?style=flat-square)
-
-The DevKit includes a powerful sync system that allows you to keep your project up-to-date with the latest DevKit assets. This is especially useful for maintaining consistent tooling across KB Labs projects.
-
-### Quick Sync
-
-To sync DevKit assets into your project:
+Sync DevKit assets into your project:
 
 ```bash
-# Install the sync tool
-pnpm add -D @kb-labs/devkit
-
 # Run sync (creates/updates files)
 npx kb-devkit-sync
 
@@ -214,7 +96,160 @@ npx kb-devkit-sync --check
 npx kb-devkit-sync --force
 ```
 
-### Sync Configuration
+## ✨ Features
+
+- **TypeScript**: Ready-to-use `tsconfig` for libraries, Node services, and CLIs
+- **ESLint**: ESLint 9 flat config with TypeScript support
+- **Prettier**: Single opinionated formatting profile
+- **Vitest**: Base test/coverage profile with lib/node overlays
+- **Tsup**: Standard builds for libraries and Node services
+- **GitHub Actions**: Reusable CI/PR/Release workflows
+- **AI Agents**: Standardized Cursor agents for common development tasks
+- **Fixtures**: Validation fixtures to ensure DevKit changes don't break downstream consumers
+- **Repository Sync**: Automated synchronization system to keep projects up-to-date
+
+## 📁 Repository Structure
+
+```
+kb-labs-devkit/
+├── agents/                  # AI agent definitions
+│   ├── devkit-maintainer/   # DevKit maintainer agent
+│   ├── test-generator/      # Test generator agent
+│   ├── docs-crafter/        # Documentation drafter agent
+│   └── release-manager/     # Release manager agent
+├── bin/                     # Executable scripts
+│   └── devkit-sync.mjs      # Sync tool binary
+├── eslint/                  # ESLint presets
+├── fixtures/                # Validation fixtures
+│   ├── lib/                 # Library fixture
+│   ├── cli/                 # CLI fixture
+│   ├── web/                 # Web app fixture
+│   └── monorepo/            # Monorepo fixture
+├── prettier/                # Prettier config
+├── scripts/                 # Utility scripts
+├── sync/                    # Sync system
+├── tsconfig/                # TypeScript configs
+├── tsup/                    # Tsup configs
+├── vite/                    # Vite configs
+├── vitest/                  # Vitest configs
+└── docs/                    # Documentation
+    └── adr/                  # Architecture Decision Records
+```
+
+### Directory Descriptions
+
+- **`agents/`** - Pre-configured AI agent definitions for Cursor and other IDE assistants
+- **`bin/`** - Executable scripts (sync tool)
+- **`fixtures/`** - Validation fixtures that act as minimal, real-world consumer projects
+- **`docs/`** - Documentation including ADRs and guides
+- **Preset directories** (`tsconfig/`, `eslint/`, `prettier/`, `vitest/`, `tsup/`) - Tooling presets
+
+## 📦 Presets
+
+### TypeScript (`tsconfig`)
+
+Available configs:
+- `base.json`: strict base (ES2022, NodeNext, strict typing, isolatedModules)
+- `cli.json`: CLI application preset
+- `lib.json`: library preset  
+- `node.json`: Node service – declarations, source maps, `include: ["src"]`
+- `react-lib.json`: React library preset
+- `react-app.json`: React application preset
+- `test.json`: Test configuration preset
+
+All configs use `module: "NodeNext"` and `moduleResolution: "NodeNext"` for proper ESM support.
+
+**Usage:**
+```json
+{
+  "extends": "@kb-labs/devkit/tsconfig/node.json"
+}
+```
+
+### ESLint
+
+- `eslint/node.js`: ESLint 9 flat config with TypeScript support
+- `eslint/react.js`: ESLint 9 flat config with React support
+
+Features:
+- Uses `typescript-eslint` recommended rules
+- Ignores `dist/`, `coverage/`, `node_modules/`, `.yalc/`
+- Allows unused variables with `_` prefix
+- Consistent type imports
+
+### Prettier
+
+- `prettier/index.json`: shared style (no semicolons, single quotes, width 100)
+
+### Tsup
+
+- `tsup/node.js`: ESM-only build (target ES2022, sourcemap, clean, treeshake)
+- `tsup/react-lib.js`: React library build preset
+
+Features:
+- ESM format only
+- ES2022 target
+- Source maps enabled
+- Tree shaking enabled
+- Clean output directory
+
+### Vitest
+
+- `vitest/node.js`: Node environment with coverage support
+- `vitest/react.js`: React environment with coverage support
+
+Features:
+- Node/React environment
+- Coverage with V8 provider (disabled by default)
+- Excludes `node_modules/`, `dist/`, etc.
+- Strict coverage thresholds when enabled
+
+## 🛠️ Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `pnpm fixtures:check` | Check all fixtures (recommended for CI) |
+| `pnpm fixtures:lint` | Lint all fixtures |
+| `pnpm fixtures:test` | Test all fixtures |
+| `pnpm fixtures:build` | Build all fixtures |
+| `pnpm fixtures:bootstrap` | Bootstrap all fixtures |
+| `pnpm fixtures:clean` | Clean all fixtures |
+| `pnpm fixtures:ci` | Run fixtures check for CI |
+
+## 📋 Development Policies
+
+- **Code Style**: ESLint + Prettier, TypeScript strict mode
+- **Testing**: Vitest with fixtures for integration testing
+- **Versioning**: SemVer with automated releases through Changesets
+- **Architecture**: Document decisions in ADRs (see `docs/adr/`)
+- **Preset Stability**: Presets maintain backward compatibility
+- **Sync System**: Automated drift detection and synchronization
+
+## 🔧 Requirements
+
+- **Node.js**: >= 18.18.0
+- **pnpm**: >= 9.0.0
+
+## ⚙️ Configuration
+
+### Repository Synchronization
+
+The DevKit includes a powerful sync system that allows you to keep your project up-to-date with the latest DevKit assets. This is especially useful for maintaining consistent tooling across KB Labs projects.
+
+#### Quick Sync
+
+```bash
+# Run sync (creates/updates files)
+npx kb-devkit-sync
+
+# Check for drift without making changes
+npx kb-devkit-sync --check
+
+# Force overwrite existing files
+npx kb-devkit-sync --force
+```
+
+#### Sync Configuration
 
 Create a `kb-labs.config.json` file in your project root to customize sync behavior:
 
@@ -257,188 +292,13 @@ By default, the sync tool includes these targets:
 - **`cursorrules`**: Cursor AI rules → `.cursorrules`
 - **`vscode`**: VS Code settings → `.vscode/settings.json`
 
-#### Sync Commands
-
-```bash
-# Sync all targets
-npx kb-devkit-sync
-
-# Sync specific targets only
-npx kb-devkit-sync agents cursorrules
-
-# Check for drift (exit code 0 = no drift, 2 = drift found)
-npx kb-devkit-sync --check
-
-# Check with specific scope
-npx kb-devkit-sync --check --scope=strict
-
-# Dry run (show what would be synced without making changes)
-npx kb-devkit-sync --dry-run
-
-# Verbose output
-npx kb-devkit-sync --verbose
-
-# JSON output for scripting
-npx kb-devkit-sync --json
-
-# Sync only CI templates
-npx kb-devkit-sync --ci-only
-
-# Force overwrite with specific scope
-npx kb-devkit-sync --force --scope=managed-only
-```
-
 #### Drift Detection Modes
 
 The sync tool supports three drift detection modes:
 
-- **`managed-only`** ![Managed](https://img.shields.io/badge/Scope-Managed%20Only-green.svg?style=flat-square) (default): Compare only files explicitly synced from DevKit. Safe for repositories with additional project-specific files.
-- **`strict`** ![Strict](https://img.shields.io/badge/Scope-Strict-red.svg?style=flat-square): Compare entire target directories and flag unmanaged files as drift. Use when you want to ensure no extra files exist.
-- **`all`** ![All](https://img.shields.io/badge/Scope-All-orange.svg?style=flat-square): Legacy mode that combines strict checking with unmanaged file detection.
-
-#### Provenance Files
-
-After each operation, DevKit creates provenance files in the `.kb/devkit/tmp/` directory:
-
-- **`DEVKIT_SYNC.json`** - Created after sync operations, tracks what was synced
-- **`DEVKIT_CHECK.json`** - Created after check operations, tracks drift analysis results
-
-Both files contain:
-- DevKit version and timestamp
-- List of targets processed
-- Drift detection scope used
-- Detailed operation report (for check operations)
-
-**Sync file example:**
-```json
-{
-  "source": "@kb-labs/devkit",
-  "version": "1.2.3",
-  "when": "2025-01-28T12:00:00Z",
-  "scope": "managed-only",
-  "items": ["ci", "agents", "cursorrules"]
-}
-```
-
-**Check file example:**
-```json
-{
-  "source": "@kb-labs/devkit",
-  "version": "1.2.3",
-  "when": "2025-01-28T12:00:00Z",
-  "scope": "managed-only",
-  "items": ["ci", "agents", "cursorrules"],
-  "report": {
-    "schemaVersion": "2-min",
-    "devkit": { "version": "1.2.3" },
-    "summary": { "driftCount": 0 },
-    "targets": [...]
-  }
-}
-```
-
-#### Configuration Examples
-
-**Basic configuration** (disable VS Code settings):
-```json
-{
-  "sync": {
-    "disabled": ["vscode"]
-  }
-}
-```
-
-**Selective sync** (only sync specific targets):
-```json
-{
-  "sync": {
-    "only": ["ci", "agents"],
-    "scope": "managed-only"
-  }
-}
-```
-
-**Strict mode** (flag unmanaged files as drift):
-```json
-{
-  "sync": {
-    "scope": "strict"
-  }
-}
-```
-
-**Custom paths** (move Cursor rules to config directory):
-```json
-{
-  "sync": {
-    "overrides": {
-      "cursorrules": { "to": ".config/cursor/rules.json" }
-    }
-  }
-}
-```
-
-**Add custom workflow sync**:
-```json
-{
-  "sync": {
-    "targets": {
-      "workflows": {
-        "from": ".github/workflows", 
-        "to": ".github/workflows", 
-        "type": "dir"
-      }
-    }
-  }
-}
-```
-
-**Force overwrite mode**:
-```json
-{
-  "sync": {
-    "force": true
-  }
-}
-```
-
-**Disable sync entirely**:
-```json
-{
-  "sync": {
-    "enabled": false
-  }
-}
-```
-
-**Complex configuration** (combine multiple options):
-```json
-{
-  "sync": {
-    "enabled": true,
-    "disabled": ["vscode"],
-    "only": ["ci", "agents"],
-    "scope": "managed-only",
-    "overrides": {
-      "cursorrules": { "to": ".config/cursor/rules.json" },
-      "agents": { "to": "tools/agents" }
-    },
-    "targets": {
-      "workflows": {
-        "from": ".github/workflows", 
-        "to": ".github/workflows", 
-        "type": "dir"
-      },
-      "docs": {
-        "from": "docs/templates", 
-        "to": "docs", 
-        "type": "dir"
-      }
-    },
-    "force": false
-  }
-}
-```
+- **`managed-only`** (default): Compare only files explicitly synced from DevKit. Safe for repositories with additional project-specific files.
+- **`strict`**: Compare entire target directories and flag unmanaged files as drift. Use when you want to ensure no extra files exist.
+- **`all`**: Legacy mode that combines strict checking with unmanaged file detection.
 
 ### GitHub Actions Integration
 
@@ -467,99 +327,33 @@ jobs:
     uses: kb-labs/devkit/.github/workflows/drift-check.yml@main
 ```
 
-## GitHub Actions ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-Reusable-2088FF.svg?style=flat-square)
+## 🤖 AI Agents
 
-This repo provides both reusable workflows and template workflows for easy setup.
+This DevKit includes pre-configured AI agents that can be synced into any KB Labs project. These agents are opinionated around KB Labs workflows (pnpm, devkit presets, monorepo). Outside this ecosystem, adapt accordingly.
 
-### Reusable Workflows
+| Agent | Purpose |
+|-------|---------|
+| **DevKit Maintainer** | Enforce unified tooling (tsconfig, eslint, prettier, vitest, tsup, CI) |
+| **Test Generator** | Generate and maintain pragmatic unit tests |
+| **Docs Drafter** | Draft and update README/CONTRIBUTING/ADR docs |
+| **Release Manager** | Prepare release plans, changelog, and GitHub releases |
 
-Use these workflows directly in your project via `workflow_call`:
+Each agent includes:
+- **Prompt**: AI instructions and context
+- **Runbook**: step-by-step procedures
+- **Context**: file patterns and permissions
 
-- **CI** (`.github/workflows/ci.yml`) — Complete CI pipeline with drift check
-- **Drift Check** (`.github/workflows/drift-check.yml`) — DevKit synchronization check
-- **Release** (`.github/workflows/release.yml`) — Automated releases and publishing
-
-### Workflow Templates
-
-Copy and customize these templates from `workflows-templates/`:
-
-- **`ci.yml`** — Basic CI workflow template
-- **`drift-check.yml`** — DevKit drift check template  
-- **`release.yml`** — Release workflow template
-- **`sbom.yml`** — Software Bill of Materials template
-
-### Quick Setup
-
-**Option 1: Use templates (recommended for new projects)**
+To sync agents into your project:
 ```bash
-# Copy workflow templates to your project
-cp workflows-templates/*.yml .github/workflows/
-# Then customize as needed
+# Copy agent definitions from this DevKit
+npx kb-devkit-sync agents
 ```
 
-**Option 2: Use reusable workflows directly**
-```yaml
-name: CI
-on: [push, pull_request]
-jobs:
-  ci:
-    uses: kb-labs/devkit/.github/workflows/ci.yml@main
-    with:
-      node-version: '20'
-      run-coverage: true
-      enable-drift-check: true
-```
+They are designed for Cursor AI agents, but can also be adapted for GitHub Copilot Chat or other IDE assistants.
 
-**Option 3: Hybrid approach**
-```yaml
-name: CI
-on: [push, pull_request]
-jobs:
-  call:
-    uses: kb-labs/devkit/.github/workflows/ci.yml@main
-    with:
-      node-version: '20'
-      run-coverage: true
-```
+See [`AGENTS.md`](./AGENTS.md) for detailed agent documentation.
 
-### Available Workflow Inputs
-
-**CI Workflow** (`.github/workflows/ci.yml`):
-- `node-version` (default: '20') — Node.js version
-- `run-coverage` (default: true) — Enable coverage reporting
-- `enable-drift-check` (default: true) — Run DevKit drift check
-
-**Drift Check Workflow** (`.github/workflows/drift-check.yml`):
-- `node-version` (default: '20') — Node.js version
-
-### Drift Check Integration
-
-The drift check ensures your project stays synchronized with the latest DevKit assets:
-
-```yaml
-# In your CI workflow
-jobs:
-  ci:
-    uses: kb-labs/devkit/.github/workflows/ci.yml@main
-    with:
-      enable-drift-check: true  # Fails CI if DevKit is out of sync
-```
-
-Or use the dedicated drift check workflow:
-```yaml
-name: Drift Check
-on:
-  workflow_dispatch: {}
-  schedule:
-    - cron: '0 3 * * *' # nightly
-jobs:
-  drift:
-    uses: kb-labs/devkit/.github/workflows/drift-check.yml@main
-```
-
-> **Note**: When using `workflow_call`/`uses`, ensure your repo has access to the source repo and required secrets if the workflow needs them.
-
-## Validation Fixtures ![Fixtures](https://img.shields.io/badge/Fixtures-Validation-9C27B0.svg?style=flat-square)
+## 🧪 Validation Fixtures
 
 This DevKit includes fixtures (`/fixtures/*`) that act as minimal, real-world consumer projects to validate DevKit changes:
 
@@ -597,27 +391,53 @@ The `fixtures:check` script runs all validation steps and is used in CI to ensur
 
 See [`scripts/README.md`](./scripts/README.md) for detailed fixture management documentation.
 
-## Architecture Decision Records (ADR) ![ADR](https://img.shields.io/badge/ADR-8%20Records-607D8B.svg?style=flat-square)
+## 📚 Documentation
 
-This DevKit follows architectural decision records to document important design decisions:
+- [Documentation Standard](./docs/DOCUMENTATION.md) - Full documentation guidelines
+- [Contributing Guide](./CONTRIBUTING.md) - How to contribute
+- [Architecture Decisions](./docs/adr/) - ADRs for this project
 
-- **[ADR 0001: Repository Synchronization via DevKit](./docs/adr/0001-repo-synchronization-via-devkit.md)** - Strategy for maintaining consistent tooling across KB Labs projects
-- **[ADR 0002: ESM-only and NodeNext](./docs/adr/0002-esm-only-and-nodenext.md)** - Decision to use ESM-only modules with NodeNext resolution
-- **[ADR 0003: Validation Fixtures Strategy](./docs/adr/0003-validation-fixtures-strategy.md)** - Approach to testing DevKit presets with realistic consumer projects
-- **[ADR 0004: Testing Strategy and Quality Gates](./docs/adr/0004-testing-strategy-and-quality-gates.md)** - Comprehensive testing approach with multiple validation layers
-- **[ADR 0005: Build & Types Strategy for KB Labs Monorepos](./docs/adr/0005-build-strategy.md)** - Unified approach to build and type generation using tsup instead of separate TSC
-- **[ADR 0006: Sequential Build & Type Safety in KB Labs Monorepos](./docs/adr/0006-monorepo-build-and-types.md)** - Orchestration of build order and dependency resolution in monorepos
-- **[ADR 0007: Reusable Workflow Strategy for CI Synchronization](./docs/adr/0007-reusable-workflow-strategy.md)** - Centralized CI workflows and drift check strategy
-- **[ADR 0008: Flexible Sync and Drift Management in DevKit](./docs/adr/0008-flexible-sync-strategy.md)** - Managed-only drift strategy with provenance tracking and flexible enforcement modes
+**Guides:**
+- [AI Agents](./AGENTS.md) - AI agent documentation
+- [Fixture Management](./scripts/README.md) - Fixture management documentation
 
-## Use cases ![Use Cases](https://img.shields.io/badge/Use%20Cases-5%20Scenarios-795548.svg?style=flat-square)
-- Bootstrap new packages/services without copying configs.
-- Enforce consistent style and rules across the ecosystem.
-- Provide a single minimal CI for PRs and releases.
-- Migrate existing projects to shared presets with minimal effort.
-- Validate DevKit changes against real-world usage patterns.
+**Architecture:**
+- [ADR 0001: Repository Synchronization via DevKit](./docs/adr/0001-repo-synchronization-via-devkit.md) - Strategy for maintaining consistent tooling
+- [ADR 0002: ESM-only and NodeNext](./docs/adr/0002-esm-only-and-nodenext.md) - ESM-only modules with NodeNext resolution
+- [ADR 0003: Validation Fixtures Strategy](./docs/adr/0003-validation-fixtures-strategy.md) - Testing DevKit presets with realistic consumer projects
+- [ADR 0004: Testing Strategy and Quality Gates](./docs/adr/0004-testing-strategy-and-quality-gates.md) - Comprehensive testing approach
+- [ADR 0005: Build & Types Strategy](./docs/adr/0005-build-strategy.md) - Unified approach to build and type generation
+- [ADR 0006: Sequential Build & Type Safety](./docs/adr/0006-monorepo-build-and-types.md) - Build order and dependency resolution
+- [ADR 0007: Reusable Workflow Strategy](./docs/adr/0007-reusable-workflow-strategy.md) - Centralized CI workflows and drift check
+- [ADR 0008: Flexible Sync and Drift Management](./docs/adr/0008-flexible-sync-strategy.md) - Managed-only drift strategy with provenance tracking
 
-## Migration Guide ![Migration](https://img.shields.io/badge/Migration-Guide-3F51B5.svg?style=flat-square)
+## 🔗 Related Packages
+
+### Dependencies
+
+- None (devkit is a foundation package)
+
+### Used By
+
+- [@kb-labs/core](https://github.com/KirillBaranov/kb-labs-core) - Core utilities
+- [@kb-labs/cli](https://github.com/KirillBaranov/kb-labs-cli) - CLI framework
+- [@kb-labs/audit](https://github.com/KirillBaranov/kb-labs-audit) - Audit framework
+- [@kb-labs/ai-review](https://github.com/KirillBaranov/kb-labs-ai-review) - AI Review
+- All other KB Labs projects
+
+### Ecosystem
+
+- [KB Labs](https://github.com/KirillBaranov/kb-labs) - Main ecosystem repository
+
+## 💡 Use Cases
+
+- Bootstrap new packages/services without copying configs
+- Enforce consistent style and rules across the ecosystem
+- Provide a single minimal CI for PRs and releases
+- Migrate existing projects to shared presets with minimal effort
+- Validate DevKit changes against real-world usage patterns
+
+## 📖 Migration Guide
 
 ### Updating to Latest DevKit
 
@@ -657,9 +477,9 @@ pnpm add -D @kb-labs/devkit
 ```json
 {
   "sync": {
-    "disabled": ["vscode"], // if you don't want VS Code settings
+    "disabled": ["vscode"],
     "overrides": {
-      "cursorrules": { "to": ".cursorrules" } // customize paths as needed
+      "cursorrules": { "to": ".cursorrules" }
     }
   }
 }
@@ -681,9 +501,10 @@ jobs:
       enable-drift-check: true
 ```
 
-## FAQ ![FAQ](https://img.shields.io/badge/FAQ-Common%20Questions-FF5722.svg?style=flat-square)
+## ❓ FAQ
 
 ### General
+
 - **Can I override rules?** — Yes. Extend locally and add your overrides on top.
 - **How do I update?** — Bump `@kb-labs/devkit` and run `npx kb-devkit-sync --check` to see what changed.
 - **ESLint 9 flat config?** — Yes, all ESLint configs use the new flat config format.
@@ -692,19 +513,30 @@ jobs:
 - **Importing specific files vs folders?** — Both are supported. Use `@kb-labs/devkit/tsconfig/node.json` for specific files or `@kb-labs/devkit/tsconfig/` for folder imports.
 
 ### Sync & Drift Detection
+
 - **What is drift check?** — A feature that compares your project's DevKit assets with the latest version to detect outdated files.
 - **Can I customize sync behavior?** — Yes, use `kb-labs.config.json` to disable targets, override paths, or add custom sync targets.
 - **What are drift detection modes?** — Three modes: `managed-only` (default, safe for mixed repos), `strict` (flags unmanaged files), and `all` (legacy mode).
-- **What are the provenance files?** — `kb-labs/DEVKIT_SYNC.json` tracks sync operations, `kb-labs/DEVKIT_CHECK.json` tracks drift check results. Both contain DevKit version, timestamp, targets, and scope used.
+- **What are the provenance files?** — `.kb/devkit/tmp/DEVKIT_SYNC.json` tracks sync operations, `.kb/devkit/tmp/DEVKIT_CHECK.json` tracks drift check results. Both contain DevKit version, timestamp, targets, and scope used.
 - **Why do I get false drift reports?** — Use `managed-only` scope to ignore project-specific files that aren't managed by DevKit.
-- **Can I disable sync entirely?** — Yes, set `"enabled": false` in `kb-labs.config.json` or use `--help` to see all options.
+- **Can I disable sync entirely?** — Yes, set `"enabled": false` in `kb-labs.config.json`.
 - **How do I sync only specific targets?** — Use `"only": ["ci", "agents"]` in config or `npx kb-devkit-sync ci agents` on command line.
 - **What's the difference between `--force` and `--check`?** — `--check` only compares files and reports drift, `--force` overwrites existing files during sync.
 
 ### CI Integration
+
 - **How do I add drift check to CI?** — Use the reusable workflow with `enable-drift-check: true` or add the dedicated drift check workflow.
 - **Can I use different drift modes in CI?** — Yes, set the `KB_DEVKIT_SYNC_SCOPE` environment variable or use `--scope` flag.
 - **What exit codes does drift check return?** — 0 for no drift, 2 for drift found, 1 for errors.
 
-## License ![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)
-MIT. See `LICENSE`.
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and contribution process.
+
+## 📄 License
+
+MIT © KB Labs
+
+---
+
+**See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and contribution process.**
