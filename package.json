@@ -11,6 +11,7 @@
     "eslint",
     "prettier",
     "vitest",
+    "vite",
     "tsup",
     ".github",
     ".vscode",
@@ -22,7 +23,8 @@
     ".github/actions/**"
   ],
   "bin": {
-    "kb-devkit-sync": "./bin/devkit-sync.mjs"
+    "kb-devkit-sync": "./bin/devkit-sync.mjs",
+    "kb-devkit-paths": "./bin/devkit-paths.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",
@@ -30,28 +32,41 @@
     "./tsconfig/cli.json": "./tsconfig/cli.json",
     "./tsconfig/lib.json": "./tsconfig/lib.json",
     "./tsconfig/node.json": "./tsconfig/node.json",
+    "./tsconfig/react-lib.json": "./tsconfig/react-lib.json",
+    "./tsconfig/react-app.json": "./tsconfig/react-app.json",
     "./tsconfig/test.json": "./tsconfig/test.json",
     "./eslint/": "./eslint/",
     "./eslint/node.js": "./eslint/node.js",
+    "./eslint/react.js": "./eslint/react.js",
     "./eslint/node": "./eslint/node.js",
+    "./eslint/react": "./eslint/react.js",
     "./prettier/": "./prettier/",
     "./prettier/index.json": "./prettier/index.json",
     "./vitest/": "./vitest/",
     "./vitest/node.js": "./vitest/node.js",
+    "./vitest/react.js": "./vitest/react.js",
     "./vitest/node": "./vitest/node.js",
+    "./vitest/react": "./vitest/react.js",
+    "./vite/": "./vite/",
+    "./vite/react-app.js": "./vite/react-app.js",
+    "./vite/react-app": "./vite/react-app.js",
     "./tsup/": "./tsup/",
     "./tsup/node.js": "./tsup/node.js",
+    "./tsup/react-lib.js": "./tsup/react-lib.js",
     "./tsup/node": "./tsup/node.js",
+    "./tsup/react-lib": "./tsup/react-lib.js",
     "./agents/": "./agents/",
     "./cursorrules": "./.cursorrules",
     "./.vscode/settings.json": "./.vscode/settings.json",
     "./AGENTS.md": "./AGENTS.md",
     "./bin/devkit-sync.mjs": "./bin/devkit-sync.mjs",
+    "./bin/devkit-paths.mjs": "./bin/devkit-paths.mjs",
     "./sync": "./sync/index.mjs"
   },
   "scripts": {
     "clean": "rimraf dist",
     "build": "echo \"@kb-labs/devkit: nothing to build\"",
+    "paths": "node ./bin/devkit-paths.mjs",
     "fixtures": "node scripts/fixtures.js –help",
     "fixtures:check": "node scripts/fixtures.js –action=check",
     "fixtures:lint": "node scripts/fixtures.js –action=lint",
@@ -66,7 +81,8 @@
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@playwright/test": "*"
   },
   "peerDependenciesMeta": {
     "eslint-plugin-import": {
@@ -74,11 +90,28 @@
     },
     "eslint-import-resolver-typescript": {
       "optional": true
+    },
+    "eslint-plugin-react-hooks": {
+      "optional": true
+    },
+    "eslint-plugin-jsx-a11y": {
+      "optional": true
+    },
+    "@testing-library/react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "@vitejs/plugin-react": {
+      "optional": true
     }
   },
   "dependencies": {
     "eslint-import-resolver-typescript": "^3.10.1",
-    "eslint-plugin-import": "^2.32.0"
+    "eslint-plugin-import": "^2.32.0",
+    "glob": "^11.0.0",
+    "yaml": "^2.8.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.4",

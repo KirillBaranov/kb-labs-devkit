@@ -110,7 +110,7 @@ The DevKit includes a powerful sync system (`sync/index.mjs`) that allows consum
 - **Configurable targets**: Sync specific files/directories with custom paths
 - **Drift detection**: Check for differences without making changes
 - **Drift modes**: `managed-only` (default), `strict`, and `all` for different enforcement levels
-- **Provenance tracking**: Automatic creation of `kb-labs/DEVKIT_SYNC.json` with sync metadata
+- **Provenance tracking**: Automatic creation of `.kb/devkit/tmp/DEVKIT_SYNC.json` with sync metadata
 - **Force overwrite**: Option to overwrite existing files
 - **Dry run**: Preview changes without applying them
 - **JSON output**: Machine-readable output for scripting
@@ -190,7 +190,7 @@ Consumer projects can configure sync behavior via `kb-labs.config.json`:
 
 #### Provenance File
 
-After each sync, DevKit creates a `kb-labs/DEVKIT_SYNC.json` file that tracks:
+After each sync, DevKit creates a `.kb/devkit/tmp/DEVKIT_SYNC.json` file that tracks:
 - DevKit version and timestamp
 - List of synced targets
 - Drift detection scope used
@@ -272,5 +272,19 @@ jobs:
 - Maintainers have final review authority for presets and workflows.
 - Breaking changes require a clear migration note in README and release notes.
 
+## 🏗️ Architecture Decisions
+
+- For significant architectural changes, add an ADR in `docs/adr/`
+- Follow the ADR template in `docs/adr/0000-template.md`
+- Include required metadata (Date, Status, Deciders, **Last Reviewed**, **Tags**)
+- **Last Reviewed** date is required and should be updated periodically
+- **Tags** are mandatory (minimum 1, maximum 5 tags from approved list)
+- See [Documentation Standard](./docs/DOCUMENTATION.md) for ADR format requirements
+
 ## Questions
+
 Open a GitHub Discussion or issue. PRs welcome!
+
+---
+
+**See [Documentation Standard](./docs/DOCUMENTATION.md) for complete documentation guidelines.**

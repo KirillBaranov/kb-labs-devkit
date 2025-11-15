@@ -10,7 +10,12 @@ export default [
       '/coverage/',
       '/.yalc/',
       '/node_modules/',
-      '**/*.d.ts'
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      '**/*.d.ts',
+      '**/scripts/**',
+      '**/eslint.config.*'
     ]
   },
 
@@ -58,7 +63,12 @@ export default [
       }],
 
       // TS ergonomics
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrors: 'all',
+        caughtErrorsIgnorePattern: '^_',
+      }],
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
 

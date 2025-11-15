@@ -35,6 +35,10 @@ pnpm agents:sync
 npx kb-devkit-sync agents
 ```
 
+Agents are synced to `.kb/devkit/agents/` in your project.
+
+> **Note:** `.kb` is the common ecosystem folder. `devkit` is the product namespace. Each product decides what to store in their namespace. Product-specific agents can be added to `.kb/<product>/agents/` if needed.
+
 ### Agent Configuration
 
 Agents are designed for Cursor AI but can be adapted for other IDE assistants:

@@ -81,6 +81,42 @@ export default config
 
 > **Build Convention**: All KB Labs packages use `"build": "tsup"` as the standard convention. The `tsup` preset handles both JavaScript bundling and TypeScript declaration generation (`dts: true`). TypeScript `tsconfig.json` with `references` is for IDE support and type-checking only, not for build orchestration. See [ADR-0009](./docs/adr/0009-unified-build-convention.md) for details.
 
+### Workspace Aliases
+
+For monorepos, DevKit ships with `kb-devkit-paths` – a generator that scans the pnpm workspace and writes `tsconfig.paths.json` with all `@kb-labs/*` aliases. Recommended setup:
+
+```json
+{
+  "extends": [
+    "@kb-labs/devkit/tsconfig/node.json",
+    "./tsconfig.paths.json"
+  ],
+  "compilerOptions": {
+    "baseUrl": "."
+  }
+}
+```
+
+Add scripts to your `package.json` so aliases stay fresh whenever DevKit sync runs:
+
+```json
+{
+  "scripts": {
+    "devkit:paths": "pnpm exec kb-devkit-paths",
+    "predevkit:sync": "pnpm devkit:paths",
+    "predevkit:sync:ci": "pnpm devkit:paths",
+    "predevkit:check": "pnpm devkit:paths",
+    "predevkit:force": "pnpm devkit:paths"
+  }
+}
+```
+
+Then generate aliases once:
+
+```bash
+pnpm run devkit:paths
+```
+
 ### Repository Synchronization
 
 Sync DevKit assets into your project:
@@ -192,6 +228,7 @@ Features:
 - Source maps enabled
 - Tree shaking enabled
 - Clean output directory
+- Automatic `external` list generated from `dependencies` + `peerDependencies`
 
 ### Vitest
 
@@ -510,33 +547,4 @@ jobs:
 - **ESLint 9 flat config?** — Yes, all ESLint configs use the new flat config format.
 - **ESM only?** — Yes, all presets assume ESM. For CJS, add dual builds/transpilation in your project.
 - **TypeScript errors with module resolution?** — Ensure you're using `module: "NodeNext"` in your tsconfig.
-- **Importing specific files vs folders?** — Both are supported. Use `@kb-labs/devkit/tsconfig/node.json` for specific files or `@kb-labs/devkit/tsconfig/` for folder imports.
-
-### Sync & Drift Detection
-
-- **What is drift check?** — A feature that compares your project's DevKit assets with the latest version to detect outdated files.
-- **Can I customize sync behavior?** — Yes, use `kb-labs.config.json` to disable targets, override paths, or add custom sync targets.
-- **What are drift detection modes?** — Three modes: `managed-only` (default, safe for mixed repos), `strict` (flags unmanaged files), and `all` (legacy mode).
-- **What are the provenance files?** — `.kb/devkit/tmp/DEVKIT_SYNC.json` tracks sync operations, `.kb/devkit/tmp/DEVKIT_CHECK.json` tracks drift check results. Both contain DevKit version, timestamp, targets, and scope used.
-- **Why do I get false drift reports?** — Use `managed-only` scope to ignore project-specific files that aren't managed by DevKit.
-- **Can I disable sync entirely?** — Yes, set `"enabled": false` in `kb-labs.config.json`.
-- **How do I sync only specific targets?** — Use `"only": ["ci", "agents"]` in config or `npx kb-devkit-sync ci agents` on command line.
-- **What's the difference between `--force` and `--check`?** — `--check` only compares files and reports drift, `--force` overwrites existing files during sync.
-
-### CI Integration
-
-- **How do I add drift check to CI?** — Use the reusable workflow with `enable-drift-check: true` or add the dedicated drift check workflow.
-- **Can I use different drift modes in CI?** — Yes, set the `KB_DEVKIT_SYNC_SCOPE` environment variable or use `--scope` flag.
-- **What exit codes does drift check return?** — 0 for no drift, 2 for drift found, 1 for errors.
-
-## 🤝 Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and contribution process.
-
-## 📄 License
-
-MIT © KB Labs
-
----
-
-**See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and contribution process.**
+- **Importing specific files vs folders?** — Both are supported. Use `@kb-labs/devkit/tsconfig/node.json` for specific files or `
