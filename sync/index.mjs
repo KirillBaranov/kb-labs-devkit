@@ -1,9 +1,10 @@
 // Public API: sync runner used by bin and by consumers via import('@kb-labs/devkit/sync')
 import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, readdir, stat, writeFile, access } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
+import { glob } from 'glob';
 
 // helpers
 async function readDevkitMeta() {
@@ -416,6 +417,146 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
   };
 }
 
+/**
+ * Generates tsconfig.build.json for all packages with tsup.config.ts
+ * This ensures tsup uses a tsconfig without paths to prevent bundling workspace packages
+ */
+async function generateTsconfigBuild(root, { dryRun, verbose }) {
+  const tsupConfigs = await glob('**/tsup.config.ts', {
+    cwd: root,
+    ignore: ['**/node_modules/**', '**/dist/**', '**/.kb/**'],
+    absolute: false,
+  });
+
+  if (tsupConfigs.length === 0) {
+    if (verbose) log('No tsup.config.ts files found, skipping tsconfig.build.json generation');
+    return { generated: 0, skipped: 0 };
+  }
+
+  let generated = 0;
+  let skipped = 0;
+
+  for (const tsupConfigPath of tsupConfigs) {
+    const pkgDir = dirname(resolve(root, tsupConfigPath));
+    const tsconfigPath = join(pkgDir, 'tsconfig.json');
+    const tsconfigBuildPath = join(pkgDir, 'tsconfig.build.json');
+
+    // Check if tsconfig.json exists
+    const tsconfigExists = await exists(tsconfigPath);
+    if (!tsconfigExists) {
+      if (verbose) log(`Skipping ${tsupConfigPath}: no tsconfig.json found`);
+      skipped++;
+      continue;
+    }
+
+    // Read existing tsconfig.json to determine base path
+    let tsconfigBase;
+    try {
+      const tsconfigContent = await readFile(tsconfigPath, 'utf8');
+      tsconfigBase = JSON.parse(tsconfigContent);
+    } catch (error) {
+      if (verbose) warn(`Failed to parse ${tsconfigPath}:`, error.message);
+      skipped++;
+      continue;
+    }
+
+    // Determine relative path to tsconfig.base.json
+    // Common patterns: "../../tsconfig.base.json", "../tsconfig.base.json", "./tsconfig.base.json"
+    let basePath = tsconfigBase.extends;
+    if (Array.isArray(basePath)) {
+      // Find the first non-devkit extends (usually tsconfig.base.json)
+      basePath = basePath.find(p => typeof p === 'string' && !p.includes('@kb-labs/devkit')) || basePath[0];
+    }
+    if (typeof basePath !== 'string') {
+      // Default: search up for tsconfig.base.json
+      let current = pkgDir;
+      let found = false;
+      for (let i = 0; i < 10; i++) {
+        const candidate = join(current, 'tsconfig.base.json');
+        if (await exists(candidate)) {
+          basePath = relative(pkgDir, candidate);
+          found = true;
+          break;
+        }
+        const parent = dirname(current);
+        if (parent === current) break;
+        current = parent;
+      }
+      if (!found) {
+        // Fallback to common pattern
+        const depth = relative(root, pkgDir).split(/[/\\]/).filter(Boolean).length;
+        basePath = '../'.repeat(depth) + 'tsconfig.base.json';
+      }
+    }
+
+    // Normalize basePath to relative path
+    if (basePath.includes('@kb-labs/devkit')) {
+      // If extends devkit, try to find tsconfig.base.json in repo root
+      let current = pkgDir;
+      for (let i = 0; i < 10; i++) {
+        const candidate = join(current, 'tsconfig.base.json');
+        if (await exists(candidate)) {
+          basePath = relative(pkgDir, candidate);
+          break;
+        }
+        const parent = dirname(current);
+        if (parent === current) break;
+        current = parent;
+      }
+    }
+
+    // Generate tsconfig.build.json content
+    const buildConfig = {
+      extends: basePath,
+      compilerOptions: {
+        outDir: 'dist',
+        baseUrl: '.',
+        paths: {},
+      },
+      include: ['src/**/*'],
+      exclude: ['dist', 'node_modules'],
+    };
+
+    // Check if file already exists and is identical
+    const existingExists = await exists(tsconfigBuildPath);
+    if (existingExists && !dryRun) {
+      try {
+        const existingContent = await readFile(tsconfigBuildPath, 'utf8');
+        const existing = JSON.parse(existingContent);
+        // Compare key fields
+        if (
+          existing.extends === buildConfig.extends &&
+          JSON.stringify(existing.compilerOptions?.paths) === JSON.stringify(buildConfig.compilerOptions.paths)
+        ) {
+          if (verbose) log(`Keep ${tsconfigBuildPath}: already up to date`);
+          skipped++;
+          continue;
+        }
+      } catch {
+        // If parse fails, regenerate
+      }
+    }
+
+    if (dryRun) {
+      log(`[dry-run] Would generate ${tsconfigBuildPath}`);
+      generated++;
+      continue;
+    }
+
+    // Write tsconfig.build.json
+    try {
+      await writeFile(tsconfigBuildPath, JSON.stringify(buildConfig, null, 2) + '\n');
+      log(`Generated ${tsconfigBuildPath}`);
+      generated++;
+    } catch (error) {
+      warn(`Failed to write ${tsconfigBuildPath}:`, error.message);
+      skipped++;
+    }
+  }
+
+  return { generated, skipped };
+}
+
 function printHelp(effectiveMap = BASE_MAP) {
   const keys = Object.keys(effectiveMap).join(', ');
   console.log(`kb-devkit-sync
@@ -509,6 +650,16 @@ export async function run({ args = [] } = {}) {
       return res.code;
     } else {
       const res = await runSync(root, map, targets, { force: force || !!cfg?.sync?.force, verbose, dryRun });
+      
+      // Generate tsconfig.build.json for all packages with tsup.config.ts
+      // This is done after sync to ensure proper bundling configuration
+      if (!dryRun || verbose) {
+        const buildResult = await generateTsconfigBuild(root, { dryRun, verbose });
+        if (buildResult.generated > 0 || buildResult.skipped > 0) {
+          log(`tsconfig.build.json: ${buildResult.generated} generated, ${buildResult.skipped} skipped`);
+        }
+      }
+      
       const report = {
         schemaVersion: '2-min',
         devkit: { version: devkitMeta.version, commit: devkitMeta.commit },

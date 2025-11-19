@@ -2,6 +2,7 @@
   "name": "@fixture/cli",
   "version": "0.0.0",
   "private": true,
+  "description": "Fixture package for testing CLI project structure with DevKit",
   "type": "module",
   "bin": {
     "fixture-cli": "./dist/cli.js"

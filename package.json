@@ -24,7 +24,8 @@
   ],
   "bin": {
     "kb-devkit-sync": "./bin/devkit-sync.mjs",
-    "kb-devkit-paths": "./bin/devkit-paths.mjs"
+    "kb-devkit-paths": "./bin/devkit-paths.mjs",
+    "kb-devkit-tsup-external": "./bin/devkit-tsup-external.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",
@@ -61,11 +62,20 @@
     "./AGENTS.md": "./AGENTS.md",
     "./bin/devkit-sync.mjs": "./bin/devkit-sync.mjs",
     "./bin/devkit-paths.mjs": "./bin/devkit-paths.mjs",
+    "./bin/devkit-tsup-external.mjs": "./bin/devkit-tsup-external.mjs",
+    "./tsup/external.mjs": "./tsup/external.mjs",
+    "./tsup/external": "./tsup/external.mjs",
+    "./tsup/external-sync.mjs": "./tsup/external-sync.mjs",
+    "./tsup/external-sync": "./tsup/external-sync.mjs",
     "./sync": "./sync/index.mjs"
   },
   "scripts": {
     "clean": "rimraf dist",
     "build": "echo \"@kb-labs/devkit: nothing to build\"",
+    "lint": "eslint . --ignore-pattern 'dist/**'",
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest --passWithNoTests",
     "paths": "node ./bin/devkit-paths.mjs",
     "fixtures": "node scripts/fixtures.js –help",
     "fixtures:check": "node scripts/fixtures.js –action=check",
@@ -74,7 +84,8 @@
     "fixtures:build": "node scripts/fixtures.js –action=build",
     "fixtures:bootstrap": "node scripts/fixtures.js –action=bootstrap",
     "fixtures:clean": "node scripts/fixtures.js –action=clean",
-    "fixtures:ci": "node scripts/fixtures.js –action=check –since=${GITHUB_BASE_REF:-origin/main} –concurrency=3 || node scripts/fixtures.js –action=check"
+    "fixtures:ci": "node scripts/fixtures.js –action=check –since=${GITHUB_BASE_REF:-origin/main} –concurrency=3 || node scripts/fixtures.js –action=check",
+    "postinstall": "kb-devkit-tsup-external --generate || true"
   },
   "peerDependencies": {
     "eslint": "^9.35.0",

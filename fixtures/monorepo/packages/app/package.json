@@ -2,6 +2,7 @@
   "name": "@fixture/app",
   "version": "0.0.0",
   "private": true,
+  "description": "Fixture app package for testing monorepo structure with DevKit",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
