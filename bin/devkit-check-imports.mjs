@@ -1,0 +1,538 @@
+#!/usr/bin/env node
+
+/**
+ * @kb-labs/devkit - Import Checker
+ *
+ * Checks for:
+ * 1. Broken imports (files that don't exist)
+ * 2. Unused dependencies in package.json
+ * 3. Imports from node_modules that should be workspace imports
+ * 4. Circular dependencies between packages
+ *
+ * Usage:
+ *   kb-devkit-check-imports                    # Check all packages
+ *   kb-devkit-check-imports --package cli-core # Check specific package
+ *   kb-devkit-check-imports --fix              # Auto-fix unused deps
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ANSI colors
+const colors = {
+  reset: '\x1b[0m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
+  gray: '\x1b[90m',
+};
+
+function log(message, color = 'reset') {
+  console.log(`${colors[color]}${message}${colors.reset}`);
+}
+
+// Parse CLI arguments
+const args = process.argv.slice(2);
+const options = {
+  package: args.find((arg) => arg.startsWith('--package='))?.split('=')[1],
+  fix: args.includes('--fix'),
+  verbose: args.includes('--verbose') || args.includes('-v'),
+};
+
+/**
+ * Extract imports from TypeScript/JavaScript file
+ */
+function extractImports(filePath, content) {
+  const imports = [];
+
+  // Match: import ... from 'module'
+  // Match: import('module')
+  // Match: require('module')
+  const patterns = [
+    /import\s+(?:[\w*{}\n\r\t, ]+\s+from\s+)?['"]([^'"]+)['"]/g,
+    /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      const importPath = match[1];
+      imports.push({
+        path: importPath,
+        line: content.substring(0, match.index).split('\n').length,
+      });
+    }
+  }
+
+  return imports;
+}
+
+/**
+ * Check if import path is a local file import
+ */
+function isLocalImport(importPath) {
+  return importPath.startsWith('.') || importPath.startsWith('/');
+}
+
+/**
+ * Check if import path is a node built-in
+ */
+function isNodeBuiltin(importPath) {
+  const builtins = [
+    'assert', 'buffer', 'child_process', 'cluster', 'crypto', 'dgram',
+    'dns', 'domain', 'events', 'fs', 'http', 'https', 'net', 'os',
+    'path', 'punycode', 'querystring', 'readline', 'repl', 'stream',
+    'string_decoder', 'timers', 'tls', 'tty', 'url', 'util', 'v8',
+    'vm', 'zlib', 'node:test',
+  ];
+
+  // Handle node: prefix
+  const moduleName = importPath.replace(/^node:/, '');
+  return builtins.includes(moduleName);
+}
+
+/**
+ * Resolve import path to actual file
+ */
+function resolveImport(importPath, sourceFile, packageRoot) {
+  if (!isLocalImport(importPath)) {
+    return null; // External dependency
+  }
+
+  const sourceDir = path.dirname(sourceFile);
+  const extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json'];
+
+  // Try exact path
+  let resolved = path.resolve(sourceDir, importPath);
+
+  // Try with extensions
+  for (const ext of extensions) {
+    const withExt = resolved + ext;
+    if (fs.existsSync(withExt) && fs.statSync(withExt).isFile()) {
+      return withExt;
+    }
+  }
+
+  // Try as directory with index file
+  if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+    for (const ext of extensions) {
+      const indexFile = path.join(resolved, `index${ext}`);
+      if (fs.existsSync(indexFile)) {
+        return indexFile;
+      }
+    }
+  }
+
+  return null; // Could not resolve
+}
+
+/**
+ * Find all source files in package
+ */
+function findSourceFiles(packageDir) {
+  const files = [];
+  const srcDir = path.join(packageDir, 'src');
+
+  if (!fs.existsSync(srcDir)) {
+    return files;
+  }
+
+  function walk(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name)) {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  walk(srcDir);
+  return files;
+}
+
+/**
+ * Check package for import issues
+ */
+function checkPackage(packageJsonPath) {
+  const packageDir = path.dirname(packageJsonPath);
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+  const packageName = packageJson.name;
+
+  if (!packageName || !packageName.startsWith('@kb-labs/')) {
+    return null; // Skip non-KB Labs packages
+  }
+
+  const issues = {
+    brokenImports: [],
+    unusedDeps: [],
+    missingWorkspaceDeps: [],
+    usedDeps: new Set(),
+  };
+
+  const dependencies = {
+    ...packageJson.dependencies,
+    ...packageJson.devDependencies,
+  };
+
+  const sourceFiles = findSourceFiles(packageDir);
+
+  if (sourceFiles.length === 0) {
+    return null; // No source files
+  }
+
+  // Check each source file
+  for (const sourceFile of sourceFiles) {
+    const content = fs.readFileSync(sourceFile, 'utf-8');
+    const imports = extractImports(sourceFile, content);
+
+    for (const imp of imports) {
+      const { path: importPath, line } = imp;
+
+      // Check local imports
+      if (isLocalImport(importPath)) {
+        const resolved = resolveImport(importPath, sourceFile, packageDir);
+
+        if (!resolved) {
+          issues.brokenImports.push({
+            file: path.relative(packageDir, sourceFile),
+            line,
+            import: importPath,
+          });
+        }
+      }
+      // Check external dependencies
+      else if (!isNodeBuiltin(importPath)) {
+        // Extract package name (handle scoped packages and subpaths)
+        const match = importPath.match(/^(@[^/]+\/[^/]+|[^/]+)/);
+        const depName = match ? match[1] : importPath;
+
+        issues.usedDeps.add(depName);
+
+        // Check if it's a workspace package that should be in dependencies
+        if (depName.startsWith('@kb-labs/')) {
+          if (!dependencies[depName]) {
+            issues.missingWorkspaceDeps.push({
+              file: path.relative(packageDir, sourceFile),
+              line,
+              package: depName,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Find unused dependencies
+  const allDeps = Object.keys(dependencies);
+  for (const dep of allDeps) {
+    // Skip type-only packages and build tools
+    if (
+      dep.startsWith('@types/') ||
+      dep === 'typescript' ||
+      dep === 'tsup' ||
+      dep === 'vitest' ||
+      dep === 'rimraf' ||
+      dep === 'eslint' ||
+      dep === 'prettier' ||
+      dep === '@kb-labs/devkit' ||
+      dep.startsWith('eslint-') ||
+      dep.startsWith('@vitest/') ||
+      dep.startsWith('@testing-library/')
+    ) {
+      continue;
+    }
+
+    if (!issues.usedDeps.has(dep)) {
+      issues.unusedDeps.push(dep);
+    }
+  }
+
+  return {
+    packageName,
+    packageDir,
+    packageJsonPath,
+    ...issues,
+  };
+}
+
+/**
+ * Find all packages in monorepo
+ */
+function findPackages(rootDir, filterPackage) {
+  const packages = [];
+  const entries = fs.readdirSync(rootDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+
+    const repoPath = path.join(rootDir, entry.name);
+    const packagesDir = path.join(repoPath, 'packages');
+
+    if (!fs.existsSync(packagesDir)) continue;
+
+    const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
+
+    for (const pkgDir of packageDirs) {
+      if (!pkgDir.isDirectory()) continue;
+
+      // Filter by package name if specified
+      if (filterPackage && pkgDir.name !== filterPackage) continue;
+
+      const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
+
+      if (fs.existsSync(packageJsonPath)) {
+        packages.push(packageJsonPath);
+      }
+    }
+  }
+
+  return packages;
+}
+
+/**
+ * Detect circular dependencies between packages
+ */
+function detectCircularDeps(allResults) {
+  const graph = new Map();
+  const packagePaths = new Map();
+
+  // Build dependency graph
+  for (const result of allResults) {
+    if (!result) continue;
+
+    const deps = [];
+    const packageJson = JSON.parse(fs.readFileSync(result.packageJsonPath, 'utf-8'));
+    const allDeps = {
+      ...packageJson.dependencies,
+      ...packageJson.devDependencies,
+    };
+
+    for (const dep of Object.keys(allDeps)) {
+      if (dep.startsWith('@kb-labs/')) {
+        deps.push(dep);
+      }
+    }
+
+    graph.set(result.packageName, deps);
+    packagePaths.set(result.packageName, result.packageDir);
+  }
+
+  // Find cycles using DFS
+  const cycles = [];
+  const visited = new Set();
+  const recStack = new Set();
+
+  function dfs(node, path = []) {
+    if (recStack.has(node)) {
+      // Found a cycle
+      const cycleStart = path.indexOf(node);
+      const cycle = [...path.slice(cycleStart), node];
+      cycles.push(cycle);
+      return;
+    }
+
+    if (visited.has(node)) return;
+
+    visited.add(node);
+    recStack.add(node);
+    path.push(node);
+
+    const neighbors = graph.get(node) || [];
+    for (const neighbor of neighbors) {
+      if (graph.has(neighbor)) {
+        dfs(neighbor, [...path]);
+      }
+    }
+
+    recStack.delete(node);
+  }
+
+  for (const node of graph.keys()) {
+    dfs(node);
+  }
+
+  // Remove duplicate cycles
+  const uniqueCycles = [];
+  const seen = new Set();
+
+  for (const cycle of cycles) {
+    const normalized = [...cycle].sort().join('→');
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      uniqueCycles.push(cycle);
+    }
+  }
+
+  return uniqueCycles;
+}
+
+/**
+ * Main function
+ */
+function main() {
+  const rootDir = process.cwd();
+
+  log('\n🔍 KB Labs Import Checker\n', 'blue');
+
+  if (options.package) {
+    log(`Checking package: ${options.package}\n`, 'gray');
+  } else {
+    log('Checking all packages...\n', 'gray');
+  }
+
+  const packages = findPackages(rootDir, options.package);
+
+  if (packages.length === 0) {
+    log('⚠️  No KB Labs packages found', 'yellow');
+    log('   Run this command from the monorepo root\n', 'gray');
+    process.exit(0);
+  }
+
+  log(`Found ${packages.length} package(s) to check\n`, 'gray');
+
+  const results = [];
+  let totalIssues = 0;
+
+  // Check each package
+  for (const packagePath of packages) {
+    const result = checkPackage(packagePath);
+    if (result) {
+      results.push(result);
+
+      const issueCount =
+        result.brokenImports.length +
+        result.unusedDeps.length +
+        result.missingWorkspaceDeps.length;
+
+      if (issueCount > 0) {
+        totalIssues += issueCount;
+      }
+    }
+  }
+
+  // Detect circular dependencies
+  const cycles = detectCircularDeps(results);
+
+  // Print results
+  let hasIssues = false;
+
+  for (const result of results) {
+    const issueCount =
+      result.brokenImports.length +
+      result.unusedDeps.length +
+      result.missingWorkspaceDeps.length;
+
+    if (issueCount === 0 && !options.verbose) continue;
+
+    hasIssues = issueCount > 0;
+
+    if (issueCount > 0) {
+      log(`\n❌ ${result.packageName}`, 'red');
+      log(`   ${path.relative(rootDir, result.packageDir)}`, 'gray');
+    } else if (options.verbose) {
+      log(`\n✅ ${result.packageName}`, 'green');
+    }
+
+    // Broken imports
+    if (result.brokenImports.length > 0) {
+      log(`\n   🔴 Broken imports (${result.brokenImports.length}):`, 'red');
+      for (const issue of result.brokenImports) {
+        log(`      ${issue.file}:${issue.line}`, 'yellow');
+        log(`      └─ Cannot resolve: ${issue.import}`, 'gray');
+      }
+    }
+
+    // Missing workspace dependencies
+    if (result.missingWorkspaceDeps.length > 0) {
+      log(`\n   🟡 Missing workspace dependencies (${result.missingWorkspaceDeps.length}):`, 'yellow');
+      const uniqueDeps = [...new Set(result.missingWorkspaceDeps.map((d) => d.package))];
+      for (const dep of uniqueDeps) {
+        const usages = result.missingWorkspaceDeps.filter((d) => d.package === dep);
+        log(`      ${dep}`, 'cyan');
+        log(`      └─ Used in ${usages.length} file(s)`, 'gray');
+        if (options.verbose) {
+          for (const usage of usages.slice(0, 3)) {
+            log(`         - ${usage.file}:${usage.line}`, 'gray');
+          }
+          if (usages.length > 3) {
+            log(`         ... and ${usages.length - 3} more`, 'gray');
+          }
+        }
+      }
+    }
+
+    // Unused dependencies
+    if (result.unusedDeps.length > 0) {
+      log(`\n   🟠 Unused dependencies (${result.unusedDeps.length}):`, 'yellow');
+      for (const dep of result.unusedDeps) {
+        log(`      ${dep}`, 'gray');
+      }
+      if (options.fix) {
+        log(`      💡 Run with --fix to remove unused dependencies`, 'blue');
+      }
+    }
+  }
+
+  // Print circular dependencies
+  if (cycles.length > 0) {
+    hasIssues = true;
+    log(`\n\n🔄 Circular Dependencies (${cycles.length}):\n`, 'magenta');
+
+    for (let i = 0; i < cycles.length; i++) {
+      const cycle = cycles[i];
+      log(`${i + 1}. ${cycle.join(' → ')}`, 'yellow');
+    }
+
+    log('\n   ⚠️  Circular dependencies can cause build and runtime issues', 'gray');
+    log('   💡 Consider refactoring to extract shared code into a new package\n', 'gray');
+  }
+
+  // Summary
+  log('\n' + '─'.repeat(60) + '\n', 'gray');
+
+  if (!hasIssues) {
+    log('✅ No import issues found!\n', 'green');
+    process.exit(0);
+  }
+
+  log('📊 Summary:\n', 'blue');
+
+  const brokenCount = results.reduce((sum, r) => sum + r.brokenImports.length, 0);
+  const unusedCount = results.reduce((sum, r) => sum + r.unusedDeps.length, 0);
+  const missingCount = results.reduce((sum, r) => sum + r.missingWorkspaceDeps.length, 0);
+
+  if (brokenCount > 0) {
+    log(`   🔴 ${brokenCount} broken import(s)`, 'red');
+  }
+  if (missingCount > 0) {
+    log(`   🟡 ${missingCount} missing workspace dep(s)`, 'yellow');
+  }
+  if (unusedCount > 0) {
+    log(`   🟠 ${unusedCount} unused dependency(ies)`, 'yellow');
+  }
+  if (cycles.length > 0) {
+    log(`   🔄 ${cycles.length} circular dependency cycle(s)`, 'magenta');
+  }
+
+  log('\n💡 Tips:', 'blue');
+  log('   • Use --verbose to see all packages (including clean ones)', 'gray');
+  log('   • Use --package=<name> to check a specific package', 'gray');
+  log('   • Use --fix to auto-remove unused dependencies (coming soon)', 'gray');
+  log('');
+
+  process.exit(1);
+}
+
+main();

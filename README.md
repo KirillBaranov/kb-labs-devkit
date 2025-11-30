@@ -132,6 +132,724 @@ npx kb-devkit-sync --check
 npx kb-devkit-sync --force
 ```
 
+### Naming Convention Validation
+
+Validate that all packages follow the **Pyramid Rule** (`@kb-labs/{repo}-{package}`):
+
+```bash
+# Validate naming convention
+npx kb-devkit-validate-naming
+
+# Run from monorepo root (validates all kb-labs-* repos)
+cd /path/to/kb-labs
+npx kb-devkit-validate-naming
+```
+
+**Output:**
+- ✅ Lists all valid packages
+- ❌ Reports violations with specific suggestions
+- Exits with code 1 if violations found (CI-friendly)
+
+See [docs/naming-convention.md](https://github.com/kb-labs/kb-labs-plugin-template/blob/main/docs/naming-convention.md) for the complete Pyramid Rule guide.
+
+### Import Checker
+
+Check for broken imports, unused dependencies, and circular dependencies across all packages:
+
+```bash
+# Check all packages for import issues
+npx kb-devkit-check-imports
+
+# Check specific package
+npx kb-devkit-check-imports --package core-cli
+
+# Show all packages (including clean ones)
+npx kb-devkit-check-imports --verbose
+
+# Auto-fix unused dependencies (coming soon)
+npx kb-devkit-check-imports --fix
+```
+
+**What it checks:**
+
+1. **Broken imports** (🔴): Files that are imported but don't exist
+   - Detects typos in import paths
+   - Finds missing files after refactoring
+   - Reports exact file and line number
+
+2. **Missing workspace dependencies** (🟡): Packages used in code but not in `package.json`
+   - Finds `@kb-labs/*` imports not declared as dependencies
+   - Shows which files use the missing package
+   - Critical for proper workspace resolution
+
+3. **Unused dependencies** (🟠): Dependencies in `package.json` but never imported
+   - Excludes build tools (`typescript`, `tsup`, `vitest`, etc.)
+   - Excludes type definitions (`@types/*`)
+   - Helps keep dependencies clean
+
+4. **Circular dependencies** (🔄): Packages that depend on each other in a cycle
+   - Detects circular dependency chains
+   - Shows full cycle path (A → B → C → A)
+   - Can cause build and runtime issues
+
+**Output:**
+- ✅ Clean packages (only with `--verbose`)
+- ❌ Packages with issues
+- 📊 Summary with counts by issue type
+- Exits with code 1 if issues found (CI-friendly)
+
+**Example output:**
+```
+🔍 KB Labs Import Checker
+
+Found 188 package(s) to check
+
+❌ @kb-labs/core-cli
+   kb-labs-core/packages/core-cli
+
+   🔴 Broken imports (2):
+      src/commands/run.ts:15
+      └─ Cannot resolve: ../utils/missing-file
+
+   🟡 Missing workspace dependencies (1):
+      @kb-labs/core-config
+      └─ Used in 3 file(s)
+
+   🟠 Unused dependencies (2):
+      lodash
+      axios
+
+🔄 Circular Dependencies (1):
+
+1. @kb-labs/cli-core → @kb-labs/cli-commands → @kb-labs/cli-core
+
+📊 Summary:
+   🔴 2 broken import(s)
+   🟡 1 missing workspace dep(s)
+   🟠 2 unused dependency(ies)
+   🔄 1 circular dependency cycle(s)
+```
+
+### Export Checker
+
+Check for unused exports, dead code in public APIs, and package.json export inconsistencies:
+
+```bash
+# Check all packages for export issues
+npx kb-devkit-check-exports
+
+# Check specific package
+npx kb-devkit-check-exports --package core-cli
+
+# Include internal exports (more thorough)
+npx kb-devkit-check-exports --strict
+
+# Show all packages (including clean ones)
+npx kb-devkit-check-exports --verbose
+```
+
+**What it checks:**
+
+1. **Unused exports** (🟠): Exports that are never imported by other packages
+   - Identifies dead code in public APIs
+   - Finds exports that can be safely removed
+   - Helps reduce API surface area
+   - Distinguishes between public (index.ts) and internal exports
+
+2. **Missing barrel exports** (🟡): Files with exports not re-exported from index.ts
+   - Only shown in `--strict` mode
+   - Finds files that may need to be added to public API
+   - Or identifies files that should be marked as internal
+
+3. **Inconsistent package.json exports** (🔴): Exports field pointing to non-existent files
+   - Validates package.json `exports` field
+   - Finds broken export paths
+   - Critical for package consumers
+
+**Output:**
+- ✅ Clean packages (only with `--verbose`)
+- ❌ Packages with unused exports
+- 📊 Summary with counts by issue type
+- Exits with code 1 if issues found (CI-friendly)
+
+**Example output:**
+```
+📤 KB Labs Export Checker
+
+Found 188 package(s) to check
+
+❌ @kb-labs/core-cli
+   kb-labs-core/packages/core-cli
+
+   🟠 Unused exports (3):
+      src/index.ts
+      └─ oldFunction (public API)
+      └─ deprecatedUtil (public API)
+      src/internal/helpers.ts
+      └─ internalHelper (internal)
+
+      💡 These exports are never imported by other packages
+      💡 Consider removing them to reduce API surface
+
+   🔴 Inconsistent package.json exports (1):
+      "./utils" → ./dist/utils.js
+      └─ File does not exist
+
+      💡 Update package.json exports field to match actual files
+
+📊 Summary:
+   🟠 3 unused export(s)
+   🔴 1 inconsistent package.json export(s)
+```
+
+### Duplicate Checker
+
+Check for duplicate dependencies with different versions and code duplication patterns:
+
+```bash
+# Check for duplicate dependencies
+npx kb-devkit-check-duplicates
+
+# Include code duplication analysis
+npx kb-devkit-check-duplicates --code
+
+# Show detailed info (outdated deps, full package lists)
+npx kb-devkit-check-duplicates --verbose
+```
+
+**What it checks:**
+1. **Duplicate dependencies** (🔴): Same package with multiple versions
+2. **Outdated common dependencies** (🟡): Packages using older versions (with `--verbose`)
+3. **Code duplication** (🟠): Similar file names across packages (with `--code`)
+
+### Structure Checker
+
+Validate package structure, required files, and package.json fields:
+
+```bash
+# Check all packages
+npx kb-devkit-check-structure
+
+# Include recommendations
+npx kb-devkit-check-structure --strict
+
+# Check specific package
+npx kb-devkit-check-structure --package core-cli
+```
+
+**What it checks:**
+1. Missing critical files (package.json, src/, tsconfig.json, README.md)
+2. Missing package.json fields (name, version, type, exports, etc.)
+3. Structure issues (missing index.ts, tests in src/, missing scripts)
+4. Documentation quality (README length, missing sections)
+5. Configuration consistency (tsconfig using devkit presets)
+
+### Visualizer
+
+Generate dependency graphs, statistics, and visualizations:
+
+```bash
+# Show all visualizations
+npx kb-devkit-visualize
+
+# Show dependency graph only
+npx kb-devkit-visualize --graph
+
+# Show package statistics
+npx kb-devkit-visualize --stats
+
+# Show dependency tree for package
+npx kb-devkit-visualize --tree --package cli-core
+```
+
+**What it shows:**
+1. **Dependency graph**: Visual representation of dependencies
+2. **Package statistics**: By repository, most depended-on, largest packages
+3. **Dependency tree**: Hierarchical view with `--tree`
+
+### Quick Statistics
+
+Get comprehensive monorepo statistics and health scores:
+
+```bash
+# Show all statistics
+npx kb-devkit-stats
+
+# Show health score
+npx kb-devkit-stats --health
+
+# Output JSON for parsing
+npx kb-devkit-stats --json
+
+# Output Markdown table
+npx kb-devkit-stats --md
+```
+
+**What it shows:**
+1. **Overview**: Total packages, repositories, files, LOC, size
+2. **Dependencies**: Workspace vs external, duplicates count
+3. **By repository**: Package count, LOC breakdown
+4. **Health score**: Grade A-F based on issues
+5. **Largest packages**: Top 5 by lines of code
+
+**Example output:**
+```
+📊 KB Labs Monorepo Statistics
+
+📦 Overview:
+   Packages:      90
+   Repositories:  18
+   Lines of Code: 226,514
+   Total Size:    6.22 MB
+
+🔗 Dependencies:
+   Total:         1,085
+   Workspace:     340
+   External:      745
+   Duplicates:    30 ⚠️
+
+💚 Health Score:
+   Score: 68/100 (Grade D)
+
+   Issues:
+   🔴 30 duplicate dependencies (-20)
+   🟡 12 packages missing README (-12)
+```
+
+### Dependency Auto-Fixer
+
+Automatically fix common dependency issues and analyze dependency usage:
+
+```bash
+# Show dependency statistics
+npx kb-devkit-fix-deps --stats
+
+# Remove unused dependencies (dry-run first!)
+npx kb-devkit-fix-deps --remove-unused --dry-run
+npx kb-devkit-fix-deps --remove-unused
+
+# Add missing workspace dependencies
+npx kb-devkit-fix-deps --add-missing
+
+# Align duplicate dependency versions
+npx kb-devkit-fix-deps --align-versions
+
+# Apply all fixes
+npx kb-devkit-fix-deps --all
+
+# Fix specific package only
+npx kb-devkit-fix-deps --remove-unused --package=core-cli
+
+# Show why dependencies were kept (debug mode)
+npx kb-devkit-fix-deps --remove-unused --dry-run --verbose
+```
+
+**What it fixes:**
+1. **Removes unused dependencies**: Safely removes deps not found in source code
+   - Scans `src/`, `test/`, `tests/`, `__tests__/`, `scripts/` directories
+   - Checks config files (`tsup.config.ts`, `vitest.config.ts`, etc.)
+   - Respects peer dependencies
+2. **Adds missing workspace deps**: Adds `@kb-labs/*` packages imported but not declared
+3. **Aligns duplicate versions**: Picks most common version and aligns all packages
+
+**Statistics mode (`--stats`):**
+```
+📊 Dependency Statistics
+
+📦 Total packages:        91
+📚 Total dependencies:    353
+🔧 Total devDependencies: 586
+🔗 Total peerDependencies: 4
+
+🔝 Top 10 Most Used Dependencies:
+    1. tsup (91 packages)
+    2. typescript (84 packages)
+    3. @types/node (83 packages)
+    ...
+```
+
+**Safety features:**
+- Always use `--dry-run` first to preview changes
+- Excludes build tools (typescript, tsup, vitest, esbuild, vite, rimraf, etc.)
+- Excludes testing tools (vitest, jest, playwright, @vitest/*, @testing-library/*)
+- Excludes type definitions (@types/*)
+- Excludes linting tools (eslint-*, @eslint/*, @typescript-eslint/*, prettier-plugin-*)
+- Respects peer dependencies (won't remove if listed in peerDependencies)
+- Use `--verbose` to see why dependencies were kept
+- Sorts dependencies alphabetically after changes
+
+**Orphan packages analysis (`--orphans`):**
+
+Find packages that no other package depends on (potential dead code):
+
+```bash
+# Find orphan packages
+npx kb-devkit-fix-deps --orphans
+
+# JSON output for CI
+npx kb-devkit-fix-deps --orphans --json
+```
+
+Output categorizes orphans into:
+- ✅ **CLI Entry Points** - Expected orphans (entry points like @kb-labs/cli-bin)
+- ✅ **Plugin Packages** - Usually standalone (@kb-labs/plugin-*, *-plugin)
+- ✅ **External Libraries** - Consumed externally (@kb-labs/*-core, ui-*, etc.)
+- ⚠️ **Internal Packages** - Review needed (might be dead code!)
+
+Example output:
+```
+👻 Orphan Packages Analysis
+
+📦 Total @kb-labs/* packages:    90
+🔗 Packages with dependents:     70
+👻 Orphan packages:              25
+
+✅ CLI Entry Points (4) - Expected orphans:
+   @kb-labs/cli-bin
+   @kb-labs/analytics-cli
+   ...
+
+📦 Plugin Packages (6) - Usually standalone:
+   @kb-labs/ai-docs-plugin
+   ...
+
+📤 External/Library Packages (9) - Consumed externally:
+   @kb-labs/devlink-core
+   ...
+
+⚠️  Internal Packages Without Dependents (6) - Review needed:
+   kb-labs-shared/
+      @kb-labs/shared-boundaries
+      @kb-labs/shared-repo
+      @kb-labs/shared-textops
+
+📊 Summary:
+   Expected orphans: 19
+   Review needed:    6
+```
+
+### CI Combo Tool
+
+Run all DevKit checks in one command for CI/CD pipelines:
+
+```bash
+# Run all checks
+npx kb-devkit-ci
+
+# Skip specific checks
+npx kb-devkit-ci --skip=exports,duplicates
+
+# Run only specific checks
+npx kb-devkit-ci --only=naming,imports
+
+# JSON output for CI parsing
+npx kb-devkit-ci --json
+```
+
+**Checks performed:**
+1. ✅ Naming convention validation
+2. ✅ Import analysis (broken imports, unused deps, circular deps)
+3. ✅ Export analysis (unused exports, dead code)
+4. ✅ Duplicate dependencies
+5. ✅ Package structure validation
+
+**CI-friendly features:**
+- Exits with code 1 on failures
+- JSON output for parsing
+- Per-check timing information
+- Summary with passed/failed counts
+
+**Example GitHub Actions integration:**
+```yaml
+name: DevKit Checks
+on: [pull_request]
+jobs:
+  devkit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run DevKit CI
+        run: npx kb-devkit-ci --json > devkit-report.json
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: devkit-report
+          path: devkit-report.json
+```
+
+### Build Order Calculator
+
+Calculate the correct build order for packages based on dependencies:
+
+```bash
+# Show sequential build order
+npx kb-devkit-build-order
+
+# Show parallel build layers
+npx kb-devkit-build-order --layers
+
+# Build order for specific package
+npx kb-devkit-build-order --package=workflow-runtime
+
+# Generate build script
+npx kb-devkit-build-order --script > build.sh
+npx kb-devkit-build-order --layers --script > build-parallel.sh
+
+# JSON output
+npx kb-devkit-build-order --json
+```
+
+**What it does:**
+1. **Builds dependency graph**: Analyzes all workspace dependencies
+2. **Topological sort**: Determines correct build order using Kahn's algorithm
+3. **Detects circular dependencies**: Shows packages involved in cycles
+4. **Parallel build layers**: Groups packages that can build in parallel
+5. **Generates build scripts**: Creates executable bash scripts for automation
+
+**Example output:**
+```
+📦 Build order for @kb-labs/workflow-runtime:
+
+  1. @kb-labs/cli-contracts
+  2. @kb-labs/shared-cli-ui
+  3. @kb-labs/core-sys
+  ...
+ 16. @kb-labs/workflow-runtime ⬅ target
+```
+
+**With --layers:**
+```
+Layer 1 (15 packages):
+   @kb-labs/core-types
+   @kb-labs/cli-contracts
+   ...
+
+Layer 2 (23 packages):
+   @kb-labs/core-sys
+   @kb-labs/plugin-manifest
+   ...
+
+Total layers: 5
+Max parallelism: 23 packages
+```
+
+### Command Health Checker
+
+Automatically check all CLI commands in the ecosystem:
+
+```bash
+# Check all commands
+npx kb-devkit-check-commands
+
+# Quick check (faster)
+npx kb-devkit-check-commands --fast
+
+# Verbose output
+npx kb-devkit-check-commands --verbose
+
+# Custom timeout
+npx kb-devkit-check-commands --timeout=10
+
+# JSON output for CI
+npx kb-devkit-check-commands --json
+```
+
+**What it checks:**
+1. **Command discovery**: Finds all commands from plugin manifests
+2. **Help output**: Tests each command with `--help`
+3. **Exit codes**: Verifies commands exit with code 0
+4. **Timeouts**: Detects slow or hanging commands
+5. **Error detection**: Identifies broken commands with detailed errors
+
+**Example output:**
+```
+🔍 KB Labs Command Health Checker
+
+Found 107 commands to check
+
+✅ Working commands (103):
+   kb plugins:list
+   kb workflow:run
+   ...
+
+❌ Broken commands (4):
+   kb ai:analyze --help
+   └─ Error: Cannot find module '@kb-labs/ai-core'
+
+📊 Summary:
+   ✅ 103 working (96%)
+   ❌ 4 broken (4%)
+```
+
+### TypeScript Types Checker
+
+Ensure all packages properly generate TypeScript declaration files:
+
+```bash
+# Check all packages for types generation
+npx kb-devkit-check-types
+
+# Auto-fix dts: false → dts: true
+npx kb-devkit-check-types --fix
+
+# Check specific package
+npx kb-devkit-check-types --package=mind-engine
+
+# Verbose output
+npx kb-devkit-check-types --verbose
+
+# Show types dependency graph
+npx kb-devkit-check-types --graph
+
+# JSON output for CI
+npx kb-devkit-check-types --json
+```
+
+**What it checks:**
+1. **Technical debt detection**: Finds `dts: false` in tsup configs (bad practice!)
+2. **Missing configuration**: Detects packages without dts settings
+3. **package.json types field**: Validates "types" field exists
+4. **Actual .d.ts files**: Checks if declaration files exist in dist/
+5. **Auto-fix capability**: Can automatically change `dts: false` to `dts: true`
+
+**Example output:**
+```
+🔍 KB Labs TypeScript Types Checker
+
+Found 90 packages to check
+
+🔴 Technical Debt: 7 package(s) with dts: false
+
+   @kb-labs/cli-core
+      /path/to/tsup.config.ts
+      └─ Has "dts: false" - types not being generated!
+      ✅ Fixed: Changed to "dts: true"
+
+📊 Summary:
+   Total packages:       90
+   With TypeScript:      90
+   ✅ Clean:             21
+   🔴 dts: false:        7 (technical debt!)
+   ⚠️  Other issues:      62
+```
+
+**Why this matters:**
+
+In a monorepo, TypeScript types form a dependency chain:
+```
+Project A uses type G from Package B
+Package B uses type L from Package M
+...
+```
+
+If any package in the chain has `dts: false` or missing types, TypeScript compilation breaks. This tool helps identify and fix those broken chains automatically.
+
+### TypeScript Types Order
+
+Calculate the correct order for types generation (separate from build order):
+
+```bash
+# Show types generation order
+npx kb-devkit-types-order
+
+# Show parallel generation layers
+npx kb-devkit-types-order --layers
+
+# Types order for specific package
+npx kb-devkit-types-order --package=workflow-runtime
+
+# Show only broken type chains
+npx kb-devkit-types-order --broken
+
+# JSON output
+npx kb-devkit-types-order --json
+```
+
+**What it does:**
+1. **Types dependency analysis**: Tracks which packages import types from which other packages
+2. **Broken chain detection**: Finds packages that import types from packages with `dts: false`
+3. **Circular type dependencies**: Detects cycles in type imports
+4. **Topological sort**: Determines correct order for .d.ts generation
+5. **Parallel layers**: Groups packages whose types can be generated in parallel
+
+**Example output:**
+```
+📘 Types generation order for @kb-labs/workflow-runtime:
+
+  1. ✅ @kb-labs/plugin-manifest
+  2. ✅ @kb-labs/shared-cli-ui
+  3. ✅ @kb-labs/core-types
+  ...
+ 18. ✅ @kb-labs/workflow-runtime ⬅ target
+```
+
+**Difference from build-order:**
+- `build-order`: Tracks **runtime** dependencies (what needs to be built first)
+- `types-order`: Tracks **type** dependencies (what types are imported from where)
+
+### TypeScript Types Audit
+
+Centralized type safety audit for entire monorepo using TypeScript Compiler API:
+
+```bash
+# Full audit report
+npx kb-devkit-types-audit
+
+# Audit specific package
+npx kb-devkit-types-audit --package=workflow-runtime
+
+# Show only critical errors
+npx kb-devkit-types-audit --errors-only
+
+# Detailed coverage report
+npx kb-devkit-types-audit --coverage
+
+# JSON output
+npx kb-devkit-types-audit --json
+```
+
+**What it does:**
+1. **Deep type analysis**: Uses TypeScript Compiler API for semantic analysis
+2. **Type errors**: Finds all type errors across monorepo (what `tsc` would show)
+3. **Type coverage**: Calculates coverage % for each package
+4. **Impact analysis**: Shows which packages are affected by type errors
+5. **Safety issues**: Detects `any` usage, `@ts-ignore` comments, missing types
+
+**Example output:**
+```
+📊 TypeScript Type Safety Audit Report
+
+❌ Critical Issues (12 packages with type errors):
+   @kb-labs/workflow-runtime
+      45 error(s) - impacts 8 package(s)
+      └─ ./src/auth.ts:45:10
+         Type 'any' is not assignable to 'string[]'
+
+🔍 Type Safety Issues:
+   127 usage(s) of 'any' type
+   45 @ts-ignore comment(s)
+
+📈 Type Coverage:
+   ✅ Excellent (≥90%): 56 packages
+   ⚠️  Good (70-90%):   28 packages
+   ❌ Poor (<70%):      6 packages
+
+📊 Summary:
+   Total packages:     90
+   ❌ Type errors:     234
+   📈 Avg coverage:    84.3%
+```
+
+**Why this is powerful:**
+
+Instead of running `tsc` in each package separately, you get:
+- **Single centralized report** for entire monorepo
+- **Impact analysis**: See which packages break if type X has errors
+- **Type coverage metrics**: Track type safety over time
+- **Dependency chains**: Understand type inheritance relationships
+
+See [USAGE_GUIDE.md](./USAGE_GUIDE.md) for comprehensive usage examples, real-world use cases, and best practices.
+
 **Automatic Build Configuration:**
 
 After sync, DevKit automatically generates `tsconfig.build.json` for all packages with `tsup.config.ts`. This ensures proper bundling configuration without manual setup.

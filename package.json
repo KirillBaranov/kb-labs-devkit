@@ -25,7 +25,21 @@
   "bin": {
     "kb-devkit-sync": "./bin/devkit-sync.mjs",
     "kb-devkit-paths": "./bin/devkit-paths.mjs",
-    "kb-devkit-tsup-external": "./bin/devkit-tsup-external.mjs"
+    "kb-devkit-tsup-external": "./bin/devkit-tsup-external.mjs",
+    "kb-devkit-validate-naming": "./bin/devkit-validate-naming.mjs",
+    "kb-devkit-check-imports": "./bin/devkit-check-imports.mjs",
+    "kb-devkit-check-exports": "./bin/devkit-check-exports.mjs",
+    "kb-devkit-check-duplicates": "./bin/devkit-check-duplicates.mjs",
+    "kb-devkit-check-structure": "./bin/devkit-check-structure.mjs",
+    "kb-devkit-check-commands": "./bin/devkit-check-commands.mjs",
+    "kb-devkit-check-types": "./bin/devkit-check-types.mjs",
+    "kb-devkit-types-audit": "./bin/devkit-types-audit.mjs",
+    "kb-devkit-build-order": "./bin/devkit-build-order.mjs",
+    "kb-devkit-types-order": "./bin/devkit-types-order.mjs",
+    "kb-devkit-visualize": "./bin/devkit-visualize.mjs",
+    "kb-devkit-ci": "./bin/devkit-ci.mjs",
+    "kb-devkit-fix-deps": "./bin/devkit-fix-deps.mjs",
+    "kb-devkit-stats": "./bin/devkit-stats.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",
