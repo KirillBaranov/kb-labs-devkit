@@ -95,6 +95,42 @@ async function resolveSourceEntries(pkgDir) {
   return { entries, wildcardBase };
 }
 
+async function collectProjectDependencies(rootDir) {
+  const dependencies = new Set();
+
+  // Find all package.json files in the project (exclude node_modules)
+  const packageJsonFiles = await glob('**/package.json', {
+    cwd: rootDir,
+    dot: false,
+    nodir: true,
+    ignore: ['**/node_modules/**', '**/dist/**'],
+  });
+
+  for (const pkgFile of packageJsonFiles) {
+    try {
+      const pkgPath = resolve(rootDir, pkgFile);
+      const pkg = await readJson(pkgPath);
+
+      // Collect all @kb-labs/* dependencies from dependencies, devDependencies, and peerDependencies
+      const allDeps = [
+        ...Object.keys(pkg.dependencies ?? {}),
+        ...Object.keys(pkg.devDependencies ?? {}),
+        ...Object.keys(pkg.peerDependencies ?? {}),
+      ];
+
+      for (const dep of allDeps) {
+        if (dep.startsWith('@kb-labs/')) {
+          dependencies.add(dep);
+        }
+      }
+    } catch (error) {
+      console.warn('[devkit-paths] failed to read package.json', pkgFile, error);
+    }
+  }
+
+  return dependencies;
+}
+
 async function generatePathsFile(rootDir) {
   const workspaceRoots = await findWorkspaceConfigs(rootDir);
   if (!workspaceRoots.length) {
@@ -107,8 +143,16 @@ async function generatePathsFile(rootDir) {
     console.warn('[devkit-paths] no packages discovered');
   }
 
+  // Collect dependencies from project's package.json files
+  const projectDependencies = await collectProjectDependencies(rootDir);
+
   const paths = {};
   for (const [name, pkgDir] of packages) {
+    // Only include packages that are used in project's package.json files
+    if (!projectDependencies.has(name)) {
+      continue;
+    }
+
     const relDir = relative(rootDir, pkgDir).replace(/\\/g, '/');
     const { entries, wildcardBase } = await resolveSourceEntries(pkgDir);
     const resolvedEntries = entries.map((abs) => relative(rootDir, abs).replace(/\\/g, '/'));
@@ -135,7 +179,7 @@ async function generatePathsFile(rootDir) {
 
   const outPath = join(rootDir, 'tsconfig.paths.json');
   await fs.writeFile(outPath, `${JSON.stringify(output, null, 2)}\n`);
-  console.log(`[devkit-paths] wrote ${Object.keys(paths).length} mappings to ${relative(rootDir, outPath) || 'tsconfig.paths.json'}`);
+  console.log(`[devkit-paths] wrote ${Object.keys(paths).length} mappings to ${relative(rootDir, outPath) || 'tsconfig.paths.json'} (${projectDependencies.size} dependencies found)`);
 }
 
 async function main() {
