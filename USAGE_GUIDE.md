@@ -373,7 +373,7 @@ npx kb-devkit-check-exports --strict
 
 # 5. Final verification
 npx kb-devkit-ci
-# ✅ All 5 checks passed
+# ✅ All 7 checks passed
 ```
 
 ### Use Case 3: Investigating Performance

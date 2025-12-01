@@ -12,6 +12,8 @@
  * 3. Export issues (unused exports, dead code)
  * 4. Duplicate dependencies
  * 5. Package structure validation
+ * 6. Path validation (workspace deps, exports, bin)
+ * 7. TypeScript types (dts generation, types field)
  *
  * Usage:
  *   kb-devkit-ci                    # Run all checks
@@ -81,6 +83,16 @@ const CHECKS = {
     name: 'Package Structure',
     command: 'devkit-check-structure.mjs',
     emoji: '📐',
+  },
+  paths: {
+    name: 'Path Validation',
+    command: 'devkit-check-paths.mjs',
+    emoji: '🔗',
+  },
+  types: {
+    name: 'TypeScript Types',
+    command: 'devkit-check-types.mjs',
+    emoji: '📝',
   },
 };
 

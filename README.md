@@ -344,6 +344,54 @@ npx kb-devkit-check-structure --package core-cli
 4. Documentation quality (README length, missing sections)
 5. Configuration consistency (tsconfig using devkit presets)
 
+### Path Validator
+
+Validate all paths and references in package.json, tsconfig.json, and dependencies:
+
+```bash
+# Check all paths
+npx kb-devkit-check-paths
+
+# Check specific package
+npx kb-devkit-check-paths --package=cli-core
+
+# JSON output for CI
+npx kb-devkit-check-paths --json
+```
+
+**What it validates:**
+1. **Workspace dependencies**: `workspace:*` references to non-existent packages
+2. **Link references**: `link:../path` pointing to non-existent directories
+3. **Package.json exports**: Export paths pointing to non-existent files
+4. **Bin scripts**: Bin entries pointing to non-existent scripts
+5. **Entry points**: `main`, `module`, `types` fields pointing to missing files
+6. **Files field**: Items in `files` array that don't exist
+7. **tsconfig.json**: Broken `extends`, `references`, and `paths` aliases
+
+**Severity levels:**
+- 🔴 **Errors**: Critical issues (broken links, missing workspace packages)
+- ⚠️ **Warnings**: Build-dependent issues (`./dist/*` files that need `pnpm build`)
+
+**Example output:**
+```
+🔗 KB Labs Path Validator
+
+📦 Missing Workspace Packages (2):
+   kb-labs-plugin/
+      @kb-labs/ai-docs-plugin
+         Workspace package "@kb-labs/setup-engine-operations" does not exist
+
+🔗 Broken Link References (1):
+   kb-labs-ai-docs/
+      @kb-labs/ai-docs-plugin
+         Link path does not exist: ../../../kb-labs-setup-engine/packages/setup-operations
+
+📊 Summary:
+   Packages checked:     91
+   ❌ Errors:            107
+   ⚠️  Warnings:          185
+```
+
 ### Visualizer
 
 Generate dependency graphs, statistics, and visualizations:
@@ -552,6 +600,8 @@ npx kb-devkit-ci --json
 3. ✅ Export analysis (unused exports, dead code)
 4. ✅ Duplicate dependencies
 5. ✅ Package structure validation
+6. ✅ Path validation (workspace deps, exports, bin)
+7. ✅ TypeScript types (dts generation, types field)
 
 **CI-friendly features:**
 - Exits with code 1 on failures

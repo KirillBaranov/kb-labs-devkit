@@ -63,10 +63,10 @@
       "@kb-labs/analytics-sdk-node/*": [
         "../kb-labs-analytics/packages/analytics-sdk-node/src/*"
       ],
-      "@kb-labs/api-contracts": [
+      "@kb-labs/rest-api-contracts": [
         "../kb-labs-rest-api/packages/api-contracts/src/index.ts"
       ],
-      "@kb-labs/api-contracts/*": [
+      "@kb-labs/rest-api-contracts/*": [
         "../kb-labs-rest-api/packages/api-contracts/src/*"
       ],
       "@kb-labs/audit-checks": [
@@ -87,10 +87,10 @@
       "@kb-labs/audit-core/*": [
         "../kb-labs-audit/packages/audit-core/src/*"
       ],
-      "@kb-labs/changelog": [
+      "@kb-labs/release-manager-changelog": [
         "../kb-labs-release-manager/packages/changelog/src/index.ts"
       ],
-      "@kb-labs/changelog/*": [
+      "@kb-labs/release-manager-changelog/*": [
         "../kb-labs-release-manager/packages/changelog/src/*"
       ],
       "@kb-labs/cli-adapters": [
@@ -297,22 +297,22 @@
       "@kb-labs/profile-toolkit/*": [
         "../kb-labs-core/packages/profile-toolkit/src/*"
       ],
-      "@kb-labs/release-checks": [
+      "@kb-labs/release-manager-checks": [
         "../kb-labs-release-manager/packages/release-checks/src/index.ts"
       ],
-      "@kb-labs/release-checks/*": [
+      "@kb-labs/release-manager-checks/*": [
         "../kb-labs-release-manager/packages/release-checks/src/*"
       ],
-      "@kb-labs/release-cli": [
+      "@kb-labs/release-manager-cli": [
         "../kb-labs-release-manager/packages/release-cli/src/index.ts"
       ],
-      "@kb-labs/release-cli/*": [
+      "@kb-labs/release-manager-cli/*": [
         "../kb-labs-release-manager/packages/release-cli/src/*"
       ],
-      "@kb-labs/release-core": [
+      "@kb-labs/release-manager-core": [
         "../kb-labs-release-manager/packages/release-core/src/index.ts"
       ],
-      "@kb-labs/release-core/*": [
+      "@kb-labs/release-manager-core/*": [
         "../kb-labs-release-manager/packages/release-core/src/*"
       ],
       "@kb-labs/rest-api-app": [
