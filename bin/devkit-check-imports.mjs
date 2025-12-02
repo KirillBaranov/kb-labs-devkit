@@ -21,6 +21,78 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Parse .devkitignore file
+ * Returns rules grouped by type
+ */
+function parseDevkitIgnore(rootDir) {
+  const ignorePath = path.join(rootDir, '.devkitignore');
+  const rules = {
+    'missing-dep': [],
+    'unused-dep': [],
+    'broken-import': [],
+    'circular-dep': [],
+  };
+
+  if (!fs.existsSync(ignorePath)) {
+    return rules;
+  }
+
+  const content = fs.readFileSync(ignorePath, 'utf-8');
+  const lines = content.split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Skip empty lines and comments
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    // Parse rule: "rule-type: pattern # reason"
+    const match = trimmed.match(/^(missing-dep|unused-dep|broken-import|circular-dep):\s*(.+?)(?:\s*#\s*(.*))?$/);
+    if (!match) continue;
+
+    const [, ruleType, pattern, reason] = match;
+
+    // Parse pattern: "package -> target"
+    // Simpler regex: match @scope/package or package, then ->, then target
+    const patternMatch = pattern.trim().match(/^(@[\w-]+\/[\w-]+|[\w-]+)\s*->\s*(.+)$/);
+    if (!patternMatch) continue;
+
+    const [, packageName, target] = patternMatch;
+
+    rules[ruleType].push({
+      package: packageName.trim(),
+      target: target.trim(),
+      reason: reason?.trim() || 'No reason provided',
+    });
+  }
+
+  return rules;
+}
+
+/**
+ * Check if an issue should be ignored based on rules
+ */
+function shouldIgnore(rules, ruleType, packageName, target) {
+  const typeRules = rules[ruleType] || [];
+
+  for (const rule of typeRules) {
+    if (rule.package !== packageName) continue;
+
+    // Handle wildcard patterns
+    if (rule.target.includes('*')) {
+      const regex = new RegExp('^' + rule.target.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+      if (regex.test(target)) {
+        return rule;
+      }
+    } else if (rule.target === target) {
+      return rule;
+    }
+  }
+
+  return null;
+}
+
 // ANSI colors
 const colors = {
   reset: '\x1b[0m',
@@ -386,6 +458,15 @@ function main() {
 
   log('\n🔍 KB Labs Import Checker\n', 'blue');
 
+  // Load ignore rules
+  const ignoreRules = parseDevkitIgnore(rootDir);
+  const hasIgnoreFile = fs.existsSync(path.join(rootDir, '.devkitignore'));
+  const totalIgnoreRules = Object.values(ignoreRules).reduce((sum, arr) => sum + arr.length, 0);
+
+  if (hasIgnoreFile && totalIgnoreRules > 0) {
+    log(`Loaded ${totalIgnoreRules} ignore rule(s) from .devkitignore\n`, 'gray');
+  }
+
   if (options.package) {
     log(`Checking package: ${options.package}\n`, 'gray');
   } else {
@@ -425,18 +506,43 @@ function main() {
   // Detect circular dependencies
   const cycles = detectCircularDeps(results);
 
+  // Track ignored items for summary
+  let ignoredBroken = 0;
+  let ignoredMissing = 0;
+  let ignoredUnused = 0;
+
   // Print results
   let hasIssues = false;
 
   for (const result of results) {
+    // Filter issues based on ignore rules
+    const filteredBroken = result.brokenImports.filter((issue) => {
+      const ignored = shouldIgnore(ignoreRules, 'broken-import', result.packageName, issue.import);
+      if (ignored) ignoredBroken++;
+      return !ignored;
+    });
+
+    const uniqueMissingDeps = [...new Set(result.missingWorkspaceDeps.map((d) => d.package))];
+    const filteredMissingDeps = uniqueMissingDeps.filter((dep) => {
+      const ignored = shouldIgnore(ignoreRules, 'missing-dep', result.packageName, dep);
+      if (ignored) ignoredMissing++;
+      return !ignored;
+    });
+
+    const filteredUnused = result.unusedDeps.filter((dep) => {
+      const ignored = shouldIgnore(ignoreRules, 'unused-dep', result.packageName, dep);
+      if (ignored) ignoredUnused++;
+      return !ignored;
+    });
+
     const issueCount =
-      result.brokenImports.length +
-      result.unusedDeps.length +
-      result.missingWorkspaceDeps.length;
+      filteredBroken.length +
+      filteredMissingDeps.length +
+      filteredUnused.length;
 
     if (issueCount === 0 && !options.verbose) continue;
 
-    hasIssues = issueCount > 0;
+    hasIssues = hasIssues || issueCount > 0;
 
     if (issueCount > 0) {
       log(`\n❌ ${result.packageName}`, 'red');
@@ -446,19 +552,18 @@ function main() {
     }
 
     // Broken imports
-    if (result.brokenImports.length > 0) {
-      log(`\n   🔴 Broken imports (${result.brokenImports.length}):`, 'red');
-      for (const issue of result.brokenImports) {
+    if (filteredBroken.length > 0) {
+      log(`\n   🔴 Broken imports (${filteredBroken.length}):`, 'red');
+      for (const issue of filteredBroken) {
         log(`      ${issue.file}:${issue.line}`, 'yellow');
         log(`      └─ Cannot resolve: ${issue.import}`, 'gray');
       }
     }
 
     // Missing workspace dependencies
-    if (result.missingWorkspaceDeps.length > 0) {
-      log(`\n   🟡 Missing workspace dependencies (${result.missingWorkspaceDeps.length}):`, 'yellow');
-      const uniqueDeps = [...new Set(result.missingWorkspaceDeps.map((d) => d.package))];
-      for (const dep of uniqueDeps) {
+    if (filteredMissingDeps.length > 0) {
+      log(`\n   🟡 Missing workspace dependencies (${filteredMissingDeps.length}):`, 'yellow');
+      for (const dep of filteredMissingDeps) {
         const usages = result.missingWorkspaceDeps.filter((d) => d.package === dep);
         log(`      ${dep}`, 'cyan');
         log(`      └─ Used in ${usages.length} file(s)`, 'gray');
@@ -474,9 +579,9 @@ function main() {
     }
 
     // Unused dependencies
-    if (result.unusedDeps.length > 0) {
-      log(`\n   🟠 Unused dependencies (${result.unusedDeps.length}):`, 'yellow');
-      for (const dep of result.unusedDeps) {
+    if (filteredUnused.length > 0) {
+      log(`\n   🟠 Unused dependencies (${filteredUnused.length}):`, 'yellow');
+      for (const dep of filteredUnused) {
         log(`      ${dep}`, 'gray');
       }
       if (options.fix) {
@@ -502,16 +607,35 @@ function main() {
   // Summary
   log('\n' + '─'.repeat(60) + '\n', 'gray');
 
-  if (!hasIssues) {
+  if (!hasIssues && cycles.length === 0) {
     log('✅ No import issues found!\n', 'green');
+    if (ignoredBroken + ignoredMissing + ignoredUnused > 0) {
+      log(`   ℹ️  ${ignoredBroken + ignoredMissing + ignoredUnused} issue(s) ignored via .devkitignore\n`, 'gray');
+    }
     process.exit(0);
   }
 
   log('📊 Summary:\n', 'blue');
 
-  const brokenCount = results.reduce((sum, r) => sum + r.brokenImports.length, 0);
-  const unusedCount = results.reduce((sum, r) => sum + r.unusedDeps.length, 0);
-  const missingCount = results.reduce((sum, r) => sum + r.missingWorkspaceDeps.length, 0);
+  // Calculate filtered counts
+  let brokenCount = 0;
+  let missingCount = 0;
+  let unusedCount = 0;
+
+  for (const result of results) {
+    brokenCount += result.brokenImports.filter(
+      (issue) => !shouldIgnore(ignoreRules, 'broken-import', result.packageName, issue.import)
+    ).length;
+
+    const uniqueDeps = [...new Set(result.missingWorkspaceDeps.map((d) => d.package))];
+    missingCount += uniqueDeps.filter(
+      (dep) => !shouldIgnore(ignoreRules, 'missing-dep', result.packageName, dep)
+    ).length;
+
+    unusedCount += result.unusedDeps.filter(
+      (dep) => !shouldIgnore(ignoreRules, 'unused-dep', result.packageName, dep)
+    ).length;
+  }
 
   if (brokenCount > 0) {
     log(`   🔴 ${brokenCount} broken import(s)`, 'red');
@@ -526,10 +650,17 @@ function main() {
     log(`   🔄 ${cycles.length} circular dependency cycle(s)`, 'magenta');
   }
 
+  // Show ignored count
+  const totalIgnored = ignoredBroken + ignoredMissing + ignoredUnused;
+  if (totalIgnored > 0) {
+    log(`\n   ℹ️  ${totalIgnored} issue(s) ignored via .devkitignore`, 'gray');
+  }
+
   log('\n💡 Tips:', 'blue');
   log('   • Use --verbose to see all packages (including clean ones)', 'gray');
   log('   • Use --package=<name> to check a specific package', 'gray');
   log('   • Use --fix to auto-remove unused dependencies (coming soon)', 'gray');
+  log('   • Add rules to .devkitignore to suppress known issues', 'gray');
   log('');
 
   process.exit(1);
