@@ -40,7 +40,8 @@
     "kb-devkit-ci": "./bin/devkit-ci.mjs",
     "kb-devkit-fix-deps": "./bin/devkit-fix-deps.mjs",
     "kb-devkit-stats": "./bin/devkit-stats.mjs",
-    "kb-devkit-check-paths": "./bin/devkit-check-paths.mjs"
+    "kb-devkit-check-paths": "./bin/devkit-check-paths.mjs",
+    "kb-devkit-architecture": "./bin/devkit-architecture.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",
