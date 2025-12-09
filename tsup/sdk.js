@@ -75,6 +75,7 @@ const PROBLEMATIC_CJS_PACKAGES = [
   'better-sqlite3',
   'sharp',
   'esbuild',
+  'yaml', // Uses require('process') internally
 ];
 
 export default defineConfig({
