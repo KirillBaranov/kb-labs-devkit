@@ -1356,3 +1356,8 @@ jobs:
 - **ESM only?** — Yes, all presets assume ESM. For CJS, add dual builds/transpilation in your project.
 - **TypeScript errors with module resolution?** — Ensure you're using `module: "NodeNext"` in your tsconfig.
 - **Importing specific files vs folders?** — Both are supported. Use `@kb-labs/devkit/tsconfig/node.json` for specific files or `
+
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
