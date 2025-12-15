@@ -42,7 +42,8 @@
     "kb-devkit-stats": "./bin/devkit-stats.mjs",
     "kb-devkit-check-paths": "./bin/devkit-check-paths.mjs",
     "kb-devkit-architecture": "./bin/devkit-architecture.mjs",
-    "kb-devkit-freshness": "./bin/devkit-freshness.mjs"
+    "kb-devkit-freshness": "./bin/devkit-freshness.mjs",
+    "kb-devkit-check-deprecated": "./bin/devkit-check-deprecated.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",
