@@ -1,7 +1,6 @@
 {
   "name": "@kb-labs/devkit",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Shared developer toolkit for KB Labs projects: TS/ESLint/Prettier/Vitest/Tsup presets and reusable GitHub Actions.",
   "files": [
@@ -43,7 +42,9 @@
     "kb-devkit-check-paths": "./bin/devkit-check-paths.mjs",
     "kb-devkit-architecture": "./bin/devkit-architecture.mjs",
     "kb-devkit-freshness": "./bin/devkit-freshness.mjs",
-    "kb-devkit-check-deprecated": "./bin/devkit-check-deprecated.mjs"
+    "kb-devkit-check-deprecated": "./bin/devkit-check-deprecated.mjs",
+    "kb-devkit-check-build-readiness": "./bin/devkit-check-build-readiness.mjs",
+    "kb-devkit-health": "./bin/devkit-health.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",
@@ -70,9 +71,10 @@
     "./vite/react-app.js": "./vite/react-app.js",
     "./vite/react-app": "./vite/react-app.js",
     "./tsup/": "./tsup/",
+    "./tsup/bin.js": "./tsup/bin.js",
+    "./tsup/dual.js": "./tsup/dual.js",
     "./tsup/node.js": "./tsup/node.js",
     "./tsup/react-lib.js": "./tsup/react-lib.js",
-    "./tsup/bin.js": "./tsup/bin.js",
     "./tsup/sdk.js": "./tsup/sdk.js",
     "./tsup/node": "./tsup/node.js",
     "./tsup/react-lib": "./tsup/react-lib.js",
