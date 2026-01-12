@@ -136,6 +136,13 @@ export default defineConfig({
   // Bundle EVERYTHING (workspace packages, node_modules, etc)
   noExternal: [/.*/],
 
+  // CRITICAL: Use 'require' condition for dual-format packages
+  // When bundling CJS, we want to resolve to .cjs files, not .js (ESM)
+  // This prevents "Could not resolve" errors for dual-format workspace packages
+  esbuildOptions(options) {
+    options.conditions = ['require', 'node'];
+  },
+
   // esbuild plugin to mark Node.js built-ins as external
   esbuildPlugins: [
     {
