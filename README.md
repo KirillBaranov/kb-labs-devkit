@@ -1048,6 +1048,13 @@ Features:
 
 | Script | Description |
 |--------|-------------|
+| `kb-devkit-health` | **⚡ NEW:** Comprehensive monorepo health check - detects missing deps, build failures, type errors |
+| `kb-devkit-ci` | Run all critical checks (naming, imports, exports, duplicates, paths, types) |
+| `kb-devkit-fix-deps` | Auto-fix dependency issues (unused deps, missing deps, version alignment) |
+| `kb-devkit-stats` | Get monorepo health score and statistics |
+| `kb-devkit-check-imports` | Check for broken imports, unused deps, circular deps |
+| `kb-devkit-check-exports` | Find unused exports and dead code |
+| `kb-devkit-types-audit` | Deep TypeScript type safety analysis for entire monorepo |
 | `pnpm fixtures:check` | Check all fixtures (recommended for CI) |
 | `pnpm fixtures:lint` | Lint all fixtures |
 | `pnpm fixtures:test` | Test all fixtures |
@@ -1055,6 +1062,52 @@ Features:
 | `pnpm fixtures:bootstrap` | Bootstrap all fixtures |
 | `pnpm fixtures:clean` | Clean all fixtures |
 | `pnpm fixtures:ci` | Run fixtures check for CI |
+
+### 🏥 Health Check Tool
+
+The `kb-devkit-health` tool is a comprehensive monorepo health check that catches critical issues early:
+
+```bash
+# Full health check (recommended before major changes)
+npx kb-devkit-health
+
+# Quick check (skips slow build and type checks)
+npx kb-devkit-health --quick
+
+# JSON output for CI/CD or AI agents
+npx kb-devkit-health --json
+
+# Check specific package
+npx kb-devkit-health --package cli-core
+```
+
+**What it checks:**
+- ✅ Missing runtime dependencies (imports not in package.json)
+- ✅ Cross-repo workspace vs link inconsistencies
+- ✅ Build failures across all packages
+- ✅ TypeScript type errors
+- ✅ Circular dependencies
+- ✅ Orphan packages
+
+**Example output:**
+```
+🏥 KB Labs Monorepo Health Check
+
+Analyzing 208 package(s)...
+
+❌ CRITICAL ISSUES (blocking)
+   • 4 package(s) with missing runtime dependencies
+     @kb-labs/cli-commands: @kb-labs/plugin-contracts, @kb-labs/devkit
+
+   • 2 cross-repo dep(s) using workspace:* instead of link:
+     @kb-labs/core-sys → @kb-labs/shared-cli-ui
+
+Health Score: 50/100 (Grade F)
+
+Recommended Actions:
+   1. Fix missing runtime dependencies:
+      kb-devkit-fix-deps --add-missing
+```
 
 ## 📋 Development Policies
 
