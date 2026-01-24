@@ -37,9 +37,10 @@ export default [
       },
     },
     languageOptions: {
-      // Enable type-aware capabilities when available without forcing per-repo setup
+      // Basic TypeScript parsing without requiring project setup
       parserOptions: {
-        projectService: true,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
       },
     },
     rules: {
@@ -72,11 +73,25 @@ export default [
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
 
+      // Async/Promise safety (non-type-aware rules only)
+      // Note: @typescript-eslint/no-floating-promises requires project setup
+      'no-return-await': 'error',
+      'no-promise-executor-return': 'error',
+      'no-await-in-loop': 'warn',
+
+      // Security
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
+
       // General safety / clarity
       'no-console': 'off',
       'no-debugger': 'warn',
       'eqeqeq': ['error', 'smart'],
       'curly': ['error', 'all'],
+      'no-throw-literal': 'error',
+      'prefer-const': 'error',
+      'no-var': 'error',
     },
   },
 
