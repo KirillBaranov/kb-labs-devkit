@@ -12,6 +12,7 @@
     "vitest",
     "vite",
     "tsup",
+    "templates",
     ".github",
     ".vscode",
     "bin",
@@ -32,6 +33,9 @@
     "kb-devkit-check-structure": "./bin/devkit-check-structure.mjs",
     "kb-devkit-check-commands": "./bin/devkit-check-commands.mjs",
     "kb-devkit-check-types": "./bin/devkit-check-types.mjs",
+    "kb-devkit-check-configs": "./bin/devkit-check-configs.mjs",
+    "kb-devkit-check-scripts": "./bin/devkit-check-scripts.mjs",
+    "kb-devkit-migrate-configs": "./bin/devkit-migrate-configs.mjs",
     "kb-devkit-types-audit": "./bin/devkit-types-audit.mjs",
     "kb-devkit-build-order": "./bin/devkit-build-order.mjs",
     "kb-devkit-types-order": "./bin/devkit-types-order.mjs",
@@ -109,7 +113,9 @@
     "fixtures:bootstrap": "node scripts/fixtures.js –action=bootstrap",
     "fixtures:clean": "node scripts/fixtures.js –action=clean",
     "fixtures:ci": "node scripts/fixtures.js –action=check –since=${GITHUB_BASE_REF:-origin/main} –concurrency=3 || node scripts/fixtures.js –action=check",
-    "postinstall": "kb-devkit-tsup-external --generate || true"
+    "postinstall": "kb-devkit-tsup-external --generate || true",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "type-check": "tsc --noEmit"
   },
   "peerDependencies": {
     "eslint": "^9.35.0",
@@ -157,7 +163,9 @@
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3"
   },
   "packageManager": "pnpm@9.11.0+sha512.0a203ffaed5a3f63242cd064c8fb5892366c103e328079318f78062f24ea8c9d50bc6a47aa3567cabefd824d170e78fa2745ed1f16b132e16436146b7688f19b",
   "engines": {
