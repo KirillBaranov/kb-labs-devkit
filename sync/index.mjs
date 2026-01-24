@@ -52,6 +52,11 @@ const BASE_MAP = {
     from: resolve(DEVKIT_ROOT, '.github/workflow-templates'),
     to: (root) => resolve(root, '.github/workflows'),
     type: 'dir',
+  },
+  configs: {
+    from: resolve(DEVKIT_ROOT, 'templates/configs'),
+    to: (root) => root, // Root of package
+    type: 'configs', // Special type for config drift checking
   }
 };
 
