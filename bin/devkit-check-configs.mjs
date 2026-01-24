@@ -150,13 +150,23 @@ async function checkPackageConfig(pkg, opts) {
 }
 
 async function checkTsupConfig(content, filePath, issues, warnings) {
-  // Check for nodePreset usage
-  if (!content.includes('nodePreset')) {
+  // Check for any DevKit preset usage
+  const hasDevKitPreset =
+    content.includes('nodePreset') ||
+    content.includes('binPreset') ||
+    content.includes('reactPreset') ||
+    content.includes('reactLibPreset') ||
+    content.includes('reactAppPreset') ||
+    content.includes('sdkPreset') ||
+    content.includes('dualPreset') ||
+    content.includes("from '@kb-labs/devkit/tsup/"); // Generic DevKit import
+
+  if (!hasDevKitPreset) {
     issues.push({
       type: 'no-preset',
       file: 'tsup.config.ts',
       severity: 'error',
-      message: 'Not using DevKit nodePreset',
+      message: 'Not using any DevKit preset',
     });
   }
 
@@ -208,13 +218,17 @@ async function checkTsupConfig(content, filePath, issues, warnings) {
 }
 
 async function checkEslintConfig(content, filePath, issues, warnings) {
-  // Check for nodePreset usage
-  if (!content.includes('nodePreset')) {
+  // Check for any DevKit preset usage (nodePreset or reactPreset)
+  const hasDevKitPreset =
+    content.includes('nodePreset') ||
+    content.includes('reactPreset');
+
+  if (!hasDevKitPreset) {
     issues.push({
       type: 'no-preset',
       file: 'eslint.config.js',
       severity: 'error',
-      message: 'Not using DevKit nodePreset',
+      message: 'Not using any DevKit preset (nodePreset/reactPreset)',
     });
   }
 

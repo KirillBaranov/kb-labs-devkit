@@ -1,12 +1,15 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "./tsconfig.json",
+  "extends": "@kb-labs/devkit/tsconfig/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {}
+  },
+  "include": [
+    "src/**/*"
+  ],
   "exclude": [
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "**/__tests__/**",
-    "**/__mocks__/**",
-    "**/vitest.config.ts",
-    "**/tsup.config.ts"
+    "dist",
+    "node_modules"
   ]
 }
