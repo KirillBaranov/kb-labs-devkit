@@ -73,7 +73,7 @@ export function buildDependencyGraph(packages, metadata) {
 
     for (const [depName, depSpec] of Object.entries(deps)) {
       // Skip external dependencies
-      if (!depName.startsWith('@kb-labs/')) continue;
+      if (!depName.startsWith('@kb-labs/')) {continue;}
 
       // Resolve workspace:* and link: references
       const resolvedMeta = resolveDependency(
@@ -112,7 +112,7 @@ export function topologicalSort(packageNames, graph) {
       // Circular dependency - skip this iteration
       return;
     }
-    if (visited.has(pkgName)) return;
+    if (visited.has(pkgName)) {return;}
 
     temp.add(pkgName);
 

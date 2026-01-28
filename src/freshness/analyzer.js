@@ -43,7 +43,7 @@ export function analyzeStaleness(pkgName, meta, graph, allMetadata, options) {
   const node = graph.get(pkgName);
   if (node && meta.distExists && meta.distMtime) {
     for (const [depName, depMeta] of node.dependencies) {
-      if (!depMeta.distExists || !depMeta.distMtime) continue;
+      if (!depMeta.distExists || !depMeta.distMtime) {continue;}
 
       // Check if dependency was rebuilt AFTER this package
       if (depMeta.distMtime > meta.distMtime) {
@@ -110,8 +110,8 @@ export function analyzeStaleness(pkgName, meta, graph, allMetadata, options) {
  * Determine overall status from issues
  */
 function determineStatus(issues) {
-  if (issues.some((i) => i.type === 'never-built')) return 'never-built';
-  if (issues.some((i) => i.severity === 'error')) return 'stale';
-  if (issues.some((i) => i.severity === 'warning')) return 'stale';
+  if (issues.some((i) => i.type === 'never-built')) {return 'never-built';}
+  if (issues.some((i) => i.severity === 'error')) {return 'stale';}
+  if (issues.some((i) => i.severity === 'warning')) {return 'stale';}
   return 'fresh';
 }

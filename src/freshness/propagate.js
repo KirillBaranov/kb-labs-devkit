@@ -9,7 +9,7 @@ export function propagateStaleness(freshnessResults, graph) {
   // Build reverse dependency map for impact calculation
   for (const [pkgName, result] of freshnessResults) {
     const node = graph.get(pkgName);
-    if (!node) continue;
+    if (!node) {continue;}
 
     // If this package is stale, mark all dependents as affected
     if (result.status === 'stale' || result.status === 'never-built') {
@@ -23,11 +23,11 @@ export function propagateStaleness(freshnessResults, graph) {
  * Recursively mark dependents as transitively stale
  */
 function propagateStaleFlag(pkgName, graph, results, visited) {
-  if (visited.has(pkgName)) return 0; // Prevent circular loops
+  if (visited.has(pkgName)) {return 0;} // Prevent circular loops
   visited.add(pkgName);
 
   const node = graph.get(pkgName);
-  if (!node) return 0;
+  if (!node) {return 0;}
 
   let count = node.dependents.size;
 

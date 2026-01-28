@@ -70,16 +70,16 @@ function buildEffectiveMap(projectCfg) {
 
   if (syncCfg.overrides && typeof syncCfg.overrides === 'object') {
     for (const [key, ov] of Object.entries(syncCfg.overrides)) {
-      if (!map[key]) continue;
-      if (ov.from) map[key].from = resolveFromDevkit(String(ov.from));
-      if (ov.to) map[key].to = (root) => resolve(root, String(ov.to));
-      if (ov.type) map[key].type = String(ov.type);
+      if (!map[key]) {continue;}
+      if (ov.from) {map[key].from = resolveFromDevkit(String(ov.from));}
+      if (ov.to) {map[key].to = (root) => resolve(root, String(ov.to));}
+      if (ov.type) {map[key].type = String(ov.type);}
     }
   }
 
   if (syncCfg.targets && typeof syncCfg.targets === 'object') {
     for (const [key, t] of Object.entries(syncCfg.targets)) {
-      if (!t?.from || !t?.to) continue;
+      if (!t?.from || !t?.to) {continue;}
       map[key] = {
         from: resolveFromDevkit(String(t.from)),
         to: (root) => resolve(root, String(t.to)),
@@ -107,7 +107,7 @@ async function listFilesRec(root) {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const e of entries) {
       const p = join(dir, e.name);
-      if (e.isDirectory()) await walk(p); else out.push(p);
+      if (e.isDirectory()) {await walk(p);} else {out.push(p);}
     }
   }
   await walk(root);
@@ -122,17 +122,17 @@ async function comparePaths(src, dst, type) {
   if (type === 'file') {
     const srcOk = await exists(src);
     const dstOk = await exists(dst);
-    if (!srcOk && !dstOk) return { diffs, onlySrc, onlyDst };
+    if (!srcOk && !dstOk) {return { diffs, onlySrc, onlyDst };}
     if (srcOk && !dstOk) { onlySrc.push(dst); return { diffs, onlySrc, onlyDst }; }
     if (!srcOk && dstOk) { onlyDst.push(dst); return { diffs, onlySrc, onlyDst }; }
     const [a, b] = await Promise.all([sha256File(src), sha256File(dst)]);
-    if (a !== b) diffs.push(dst);
+    if (a !== b) {diffs.push(dst);}
     return { diffs, onlySrc, onlyDst };
   }
 
   const srcOk = await exists(src);
   const dstOk = await exists(dst);
-  if (!srcOk && !dstOk) return { diffs, onlySrc, onlyDst };
+  if (!srcOk && !dstOk) {return { diffs, onlySrc, onlyDst };}
   if (srcOk && !dstOk) {
     const files = await listFilesRec(src);
     onlySrc.push(...files.map(f => f.replace(src, dst)));
@@ -153,10 +153,10 @@ async function comparePaths(src, dst, type) {
     const pDst = dstRel.get(rel);
     if (!pDst) { onlySrc.push(join(dst, rel)); continue; }
     const [a, b] = await Promise.all([sha256File(pSrc), sha256File(pDst)]);
-    if (a !== b) diffs.push(pDst);
+    if (a !== b) {diffs.push(pDst);}
   }
   for (const [rel, pDst] of dstRel) {
-    if (!srcRel.has(rel)) onlyDst.push(pDst);
+    if (!srcRel.has(rel)) {onlyDst.push(pDst);}
   }
   return { diffs, onlySrc, onlyDst };
 }
@@ -168,11 +168,11 @@ function parseArgs(argv) {
   const positional = [];
 
   for (const a of args) {
-    if (a === '--') break;
+    if (a === '--') {break;}
     if (a.startsWith('--')) {
       const [k, v] = a.split('=', 2);
-      if (v === undefined) flags.add(k);
-      else kv.set(k, v);
+      if (v === undefined) {flags.add(k);}
+      else {kv.set(k, v);}
     } else {
       positional.push(a);
     }
@@ -203,7 +203,7 @@ async function readProjectConfig(root) {
 
 function resolveTargets(effectiveMap, { onlyList, positional, disabledSet }) {
   const all = Object.keys(effectiveMap).filter(k => !disabledSet.has(k));
-  if (onlyList.length === 0 && positional.length === 0) return all;
+  if (onlyList.length === 0 && positional.length === 0) {return all;}
   const requested = [...onlyList, ...positional].filter(Boolean);
   return requested.filter(k => effectiveMap[k] && !disabledSet.has(k));
 }
@@ -218,7 +218,7 @@ async function writeProvenance(root, { items = [], scope = 'managed-only', repor
     scope,
     items,
   };
-  if (report) payload.report = report;
+  if (report) {payload.report = report;}
   await writeFile(resolve(root, `.kb/devkit/tmp/${fileName}`), JSON.stringify(payload, null, 2));
 }
 
@@ -265,7 +265,7 @@ async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
     for (const p of res.onlySrc) {
       const rel = p.startsWith(dst) ? p.slice(dst.length + 1) : null;
       const pSrcAbs = rel ? join(from, rel) : null;
-      let hashSrc = null; try { if (pSrcAbs) hashSrc = await sha256File(pSrcAbs); } catch { }
+      let hashSrc = null; try { if (pSrcAbs) {hashSrc = await sha256File(pSrcAbs);} } catch { }
       files.push({
         fromPath: rel ? relFromDevkit(pSrcAbs) : null,
         toPath: relFromRepo(root, p),
@@ -295,7 +295,7 @@ async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
       log(`drift ${key}:`, JSON.stringify(item, null, 2));
     } else {
       summary.ok++;
-      if (verbose) log(`ok ${key}: no drift`);
+      if (verbose) {log(`ok ${key}: no drift`);}
     }
   }
   log('check done', summary);
@@ -352,7 +352,7 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
       }
       keptCount++;
       reportTargets.push(tReport);
-      if (verbose) log(`keep ${key} — exists: ${dst}`);
+      if (verbose) {log(`keep ${key} — exists: ${dst}`);}
       continue;
     }
     if (dryRun) {
@@ -379,13 +379,13 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
       return { srcFile, dstFile, existed, hashBefore: hb };
     }));
 
-    if (type === 'file') await ensureDirForFile(dst); else await mkdir(dst, { recursive: true });
+    if (type === 'file') {await ensureDirForFile(dst);} else {await mkdir(dst, { recursive: true });}
     await cp(from, dst, { recursive: true, force: true });
 
     const afterState = await Promise.all(beforeState.map(async (s) => {
       const ha = await sha256File(s.dstFile).catch(() => null);
       const action = s.existed ? ((s.hashBefore && ha && s.hashBefore === ha) ? 'keep' : 'update') : 'create';
-      if (action !== 'keep') filesChanged++;
+      if (action !== 'keep') {filesChanged++;}
       tReport.files.push({
         fromPath: relFromDevkit(s.srcFile),
         toPath: relFromRepo(root, s.dstFile),
@@ -434,7 +434,7 @@ async function generateTsconfigBuild(root, { dryRun, verbose }) {
   });
 
   if (tsupConfigs.length === 0) {
-    if (verbose) log('No tsup.config.ts files found, skipping tsconfig.build.json generation');
+    if (verbose) {log('No tsup.config.ts files found, skipping tsconfig.build.json generation');}
     return { generated: 0, skipped: 0 };
   }
 
@@ -449,7 +449,7 @@ async function generateTsconfigBuild(root, { dryRun, verbose }) {
     // Check if tsconfig.json exists
     const tsconfigExists = await exists(tsconfigPath);
     if (!tsconfigExists) {
-      if (verbose) log(`Skipping ${tsupConfigPath}: no tsconfig.json found`);
+      if (verbose) {log(`Skipping ${tsupConfigPath}: no tsconfig.json found`);}
       skipped++;
       continue;
     }
@@ -460,7 +460,7 @@ async function generateTsconfigBuild(root, { dryRun, verbose }) {
       const tsconfigContent = await readFile(tsconfigPath, 'utf8');
       tsconfigBase = JSON.parse(tsconfigContent);
     } catch (error) {
-      if (verbose) warn(`Failed to parse ${tsconfigPath}:`, error.message);
+      if (verbose) {warn(`Failed to parse ${tsconfigPath}:`, error.message);}
       skipped++;
       continue;
     }
@@ -484,7 +484,7 @@ async function generateTsconfigBuild(root, { dryRun, verbose }) {
           break;
         }
         const parent = dirname(current);
-        if (parent === current) break;
+        if (parent === current) {break;}
         current = parent;
       }
       if (!found) {
@@ -505,7 +505,7 @@ async function generateTsconfigBuild(root, { dryRun, verbose }) {
           break;
         }
         const parent = dirname(current);
-        if (parent === current) break;
+        if (parent === current) {break;}
         current = parent;
       }
     }
@@ -533,7 +533,7 @@ async function generateTsconfigBuild(root, { dryRun, verbose }) {
           existing.extends === buildConfig.extends &&
           JSON.stringify(existing.compilerOptions?.paths) === JSON.stringify(buildConfig.compilerOptions.paths)
         ) {
-          if (verbose) log(`Keep ${tsconfigBuildPath}: already up to date`);
+          if (verbose) {log(`Keep ${tsconfigBuildPath}: already up to date`);}
           skipped++;
           continue;
         }
@@ -625,8 +625,8 @@ export async function run({ args = [] } = {}) {
   if (ciOnly) {
     const hasCi = select.includes('ci') || positional.includes('ci');
     if (!hasCi) {
-      if (select.length === 0 && positional.length === 0) select = ['ci'];
-      else select.push('ci');
+      if (select.length === 0 && positional.length === 0) {select = ['ci'];}
+      else {select.push('ci');}
     }
   }
 
@@ -639,7 +639,7 @@ export async function run({ args = [] } = {}) {
   log(`Targets: [${targets.join(', ')}]`);
 
   let scope = scopeFromCli || cfg?.sync?.scope || 'managed-only';
-  if (!['managed-only', 'strict', 'all'].includes(scope)) scope = 'managed-only';
+  if (!['managed-only', 'strict', 'all'].includes(scope)) {scope = 'managed-only';}
 
   if (help) { printHelp(map); return 0; }
   if (version) { await printVersion(); return 0; }
@@ -651,7 +651,7 @@ export async function run({ args = [] } = {}) {
     log('Starting devkit sync...');
     if (check) {
       const res = await runCheck(root, map, targets, { verbose, scope });
-      if (json) console.log(JSON.stringify({ mode: 'check', ...res }, null, 2));
+      if (json) {console.log(JSON.stringify({ mode: 'check', ...res }, null, 2));}
       return res.code;
     } else {
       const res = await runSync(root, map, targets, { force: force || !!cfg?.sync?.force, verbose, dryRun });
@@ -684,7 +684,7 @@ export async function run({ args = [] } = {}) {
         targets: (res?._report?.targets ?? [])
       };
       await writeProvenance(root, { items: targets, scope, report, fileName: 'DEVKIT_SYNC.json' });
-      if (json) console.log(JSON.stringify({ mode: 'sync', ...res }, null, 2));
+      if (json) {console.log(JSON.stringify({ mode: 'sync', ...res }, null, 2));}
       return res.code;
     }
   } finally {

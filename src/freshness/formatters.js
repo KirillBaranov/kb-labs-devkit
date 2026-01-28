@@ -25,7 +25,7 @@ function log(message, color = 'reset') {
  * Format age in human-readable format
  */
 function formatAge(distMtime) {
-  if (!distMtime) return '-';
+  if (!distMtime) {return '-';}
 
   const now = Date.now();
   const ageMs = now - distMtime;
@@ -36,19 +36,19 @@ function formatAge(distMtime) {
 
   // Less than 1 hour - show minutes
   if (hours === 0) {
-    if (minutes === 0) return '<1m';
-    if (minutes === 1) return '1m';
+    if (minutes === 0) {return '<1m';}
+    if (minutes === 1) {return '1m';}
     return `${minutes}m`;
   }
 
   // Less than 24 hours - show hours
   if (days === 0) {
-    if (hours === 1) return '1h';
+    if (hours === 1) {return '1h';}
     return `${hours}h`;
   }
 
   // 1 day or more - show days
-  if (days === 1) return '1d';
+  if (days === 1) {return '1d';}
   return `${days}d`;
 }
 
@@ -72,14 +72,14 @@ function getStatusIcon(status) {
  * Get primary issue message
  */
 function getPrimaryIssue(result) {
-  if (result.issues.length === 0) return '-';
+  if (result.issues.length === 0) {return '-';}
 
   // Prioritize errors, then warnings, then info
   const error = result.issues.find((i) => i.severity === 'error');
-  if (error) return error.message;
+  if (error) {return error.message;}
 
   const warning = result.issues.find((i) => i.severity === 'warning');
-  if (warning) return warning.message;
+  if (warning) {return warning.message;}
 
   return result.issues[0].message;
 }
