@@ -45,18 +45,18 @@ function parseDevkitIgnore(rootDir) {
     const trimmed = line.trim();
 
     // Skip empty lines and comments
-    if (!trimmed || trimmed.startsWith('#')) continue;
+    if (!trimmed || trimmed.startsWith('#')) {continue;}
 
     // Parse rule: "rule-type: pattern # reason"
     const match = trimmed.match(/^(missing-dep|unused-dep|broken-import|circular-dep):\s*(.+?)(?:\s*#\s*(.*))?$/);
-    if (!match) continue;
+    if (!match) {continue;}
 
     const [, ruleType, pattern, reason] = match;
 
     // Parse pattern: "package -> target"
     // Simpler regex: match @scope/package or package, then ->, then target
     const patternMatch = pattern.trim().match(/^(@[\w-]+\/[\w-]+|[\w-]+)\s*->\s*(.+)$/);
-    if (!patternMatch) continue;
+    if (!patternMatch) {continue;}
 
     const [, packageName, target] = patternMatch;
 
@@ -77,7 +77,7 @@ function shouldIgnore(rules, ruleType, packageName, target) {
   const typeRules = rules[ruleType] || [];
 
   for (const rule of typeRules) {
-    if (rule.package !== packageName) continue;
+    if (rule.package !== packageName) {continue;}
 
     // Handle wildcard patterns
     if (rule.target.includes('*')) {
@@ -157,17 +157,23 @@ function isLocalImport(importPath) {
  * Check if import path is a node built-in
  */
 function isNodeBuiltin(importPath) {
+  // If it starts with node:, it's definitely a builtin
+  if (importPath.startsWith('node:')) {
+    return true;
+  }
+
   const builtins = [
     'assert', 'buffer', 'child_process', 'cluster', 'crypto', 'dgram',
     'dns', 'domain', 'events', 'fs', 'http', 'https', 'net', 'os',
     'path', 'punycode', 'querystring', 'readline', 'repl', 'stream',
     'string_decoder', 'timers', 'tls', 'tty', 'url', 'util', 'v8',
-    'vm', 'zlib', 'node:test',
+    'vm', 'zlib', 'module', 'inspector', 'perf_hooks', 'worker_threads',
+    'async_hooks', 'trace_events', 'diagnostics_channel',
   ];
 
-  // Handle node: prefix
-  const moduleName = importPath.replace(/^node:/, '');
-  return builtins.includes(moduleName);
+  // Also check for subpaths like fs/promises
+  const baseModule = importPath.split('/')[0];
+  return builtins.includes(baseModule);
 }
 
 /**
@@ -182,7 +188,7 @@ function resolveImport(importPath, sourceFile, packageRoot) {
   const extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json'];
 
   // Try exact path
-  let resolved = path.resolve(sourceDir, importPath);
+  const resolved = path.resolve(sourceDir, importPath);
 
   // Try with extensions
   for (const ext of extensions) {
@@ -250,6 +256,7 @@ function checkPackage(packageJsonPath) {
     brokenImports: [],
     unusedDeps: [],
     missingWorkspaceDeps: [],
+    missingNpmDeps: [],
     usedDeps: new Set(),
   };
 
@@ -302,6 +309,16 @@ function checkPackage(packageJsonPath) {
             });
           }
         }
+        // Check if it's a regular npm package that should be in dependencies
+        else {
+          if (!dependencies[depName]) {
+            issues.missingNpmDeps.push({
+              file: path.relative(packageDir, sourceFile),
+              line,
+              package: depName,
+            });
+          }
+        }
       }
     }
   }
@@ -347,20 +364,20 @@ function findPackages(rootDir, filterPackage) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       // Filter by package name if specified
-      if (filterPackage && pkgDir.name !== filterPackage) continue;
+      if (filterPackage && pkgDir.name !== filterPackage) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -382,7 +399,7 @@ function detectCircularDeps(allResults) {
 
   // Build dependency graph
   for (const result of allResults) {
-    if (!result) continue;
+    if (!result) {continue;}
 
     const deps = [];
     const packageJson = JSON.parse(fs.readFileSync(result.packageJsonPath, 'utf-8'));
@@ -415,7 +432,7 @@ function detectCircularDeps(allResults) {
       return;
     }
 
-    if (visited.has(node)) return;
+    if (visited.has(node)) {return;}
 
     visited.add(node);
     recStack.add(node);
@@ -518,29 +535,37 @@ function main() {
     // Filter issues based on ignore rules
     const filteredBroken = result.brokenImports.filter((issue) => {
       const ignored = shouldIgnore(ignoreRules, 'broken-import', result.packageName, issue.import);
-      if (ignored) ignoredBroken++;
+      if (ignored) {ignoredBroken++;}
       return !ignored;
     });
 
     const uniqueMissingDeps = [...new Set(result.missingWorkspaceDeps.map((d) => d.package))];
     const filteredMissingDeps = uniqueMissingDeps.filter((dep) => {
       const ignored = shouldIgnore(ignoreRules, 'missing-dep', result.packageName, dep);
-      if (ignored) ignoredMissing++;
+      if (ignored) {ignoredMissing++;}
+      return !ignored;
+    });
+
+    const uniqueMissingNpmDeps = [...new Set(result.missingNpmDeps.map((d) => d.package))];
+    const filteredMissingNpmDeps = uniqueMissingNpmDeps.filter((dep) => {
+      const ignored = shouldIgnore(ignoreRules, 'missing-dep', result.packageName, dep);
+      if (ignored) {ignoredMissing++;}
       return !ignored;
     });
 
     const filteredUnused = result.unusedDeps.filter((dep) => {
       const ignored = shouldIgnore(ignoreRules, 'unused-dep', result.packageName, dep);
-      if (ignored) ignoredUnused++;
+      if (ignored) {ignoredUnused++;}
       return !ignored;
     });
 
     const issueCount =
       filteredBroken.length +
       filteredMissingDeps.length +
+      filteredMissingNpmDeps.length +
       filteredUnused.length;
 
-    if (issueCount === 0 && !options.verbose) continue;
+    if (issueCount === 0 && !options.verbose) {continue;}
 
     hasIssues = hasIssues || issueCount > 0;
 
@@ -565,6 +590,24 @@ function main() {
       log(`\n   🟡 Missing workspace dependencies (${filteredMissingDeps.length}):`, 'yellow');
       for (const dep of filteredMissingDeps) {
         const usages = result.missingWorkspaceDeps.filter((d) => d.package === dep);
+        log(`      ${dep}`, 'cyan');
+        log(`      └─ Used in ${usages.length} file(s)`, 'gray');
+        if (options.verbose) {
+          for (const usage of usages.slice(0, 3)) {
+            log(`         - ${usage.file}:${usage.line}`, 'gray');
+          }
+          if (usages.length > 3) {
+            log(`         ... and ${usages.length - 3} more`, 'gray');
+          }
+        }
+      }
+    }
+
+    // Missing npm dependencies
+    if (filteredMissingNpmDeps.length > 0) {
+      log(`\n   🟡 Missing npm dependencies (${filteredMissingNpmDeps.length}):`, 'yellow');
+      for (const dep of filteredMissingNpmDeps) {
+        const usages = result.missingNpmDeps.filter((d) => d.package === dep);
         log(`      ${dep}`, 'cyan');
         log(`      └─ Used in ${usages.length} file(s)`, 'gray');
         if (options.verbose) {

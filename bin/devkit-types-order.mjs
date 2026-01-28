@@ -63,17 +63,17 @@ function findPackages(rootDir) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -135,7 +135,7 @@ function walkDir(dir, predicate) {
     const fullPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      if (walkDir(fullPath, predicate)) return true;
+      if (walkDir(fullPath, predicate)) {return true;}
     } else if (entry.isFile() && predicate(entry.name)) {
       return true;
     }
@@ -153,7 +153,7 @@ function walkDir(dir, predicate) {
  */
 function extractTypeImports(packageDir) {
   const srcDir = path.join(packageDir, 'src');
-  if (!fs.existsSync(srcDir)) return new Set();
+  if (!fs.existsSync(srcDir)) {return new Set();}
 
   const typeImports = new Set();
 
@@ -207,7 +207,7 @@ function buildTypesDependencyGraph(packages) {
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     const packageName = packageJson.name;
 
-    if (!packageName || !packageName.startsWith('@kb-labs/')) continue;
+    if (!packageName || !packageName.startsWith('@kb-labs/')) {continue;}
 
     const typesStatus = checkTypesGeneration(packageDir);
 
@@ -224,7 +224,7 @@ function buildTypesDependencyGraph(packages) {
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     const packageName = packageJson.name;
 
-    if (!packageName || !packageName.startsWith('@kb-labs/')) continue;
+    if (!packageName || !packageName.startsWith('@kb-labs/')) {continue;}
 
     const typeImports = extractTypeImports(packageDir);
 
@@ -385,11 +385,11 @@ function getTypesOrderForPackage(graph, packageName) {
   const order = [];
 
   function visit(pkg) {
-    if (visited.has(pkg)) return;
+    if (visited.has(pkg)) {return;}
     visited.add(pkg);
 
     const node = graph.get(pkg);
-    if (!node) return;
+    if (!node) {return;}
 
     for (const dep of node.typeDeps) {
       visit(dep);

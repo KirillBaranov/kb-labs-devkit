@@ -99,21 +99,21 @@ function findPackages(rootDir) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const repoName = extractRepoName(entry.name);
-    if (!repoName) continue;
+    if (!repoName) {continue;}
 
     // Find all package.json files in packages/
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -152,7 +152,7 @@ function main() {
   for (const pkg of packages) {
     const result = validatePackage(pkg.path, pkg.repoName);
 
-    if (result.skip) continue;
+    if (result.skip) {continue;}
 
     if (result.valid) {
       valid.push({ ...result, repo: pkg.repoPath });

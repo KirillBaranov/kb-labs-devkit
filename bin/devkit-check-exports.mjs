@@ -188,7 +188,7 @@ function findSourceFiles(packageDir) {
  * Check if export is used in package.json exports field
  */
 function isUsedInPackageExports(exportName, packageJson) {
-  if (!packageJson.exports) return false;
+  if (!packageJson.exports) {return false;}
 
   const exportsStr = JSON.stringify(packageJson.exports);
   return exportsStr.includes(exportName);
@@ -234,7 +234,7 @@ function checkPackage(packageJsonPath, allPackages) {
   const externalImports = new Map(); // packageName -> imports[]
 
   for (const otherPackagePath of allPackages) {
-    if (otherPackagePath === packageJsonPath) continue; // Skip self
+    if (otherPackagePath === packageJsonPath) {continue;} // Skip self
 
     const otherPackageDir = path.dirname(otherPackagePath);
     const otherSourceFiles = findSourceFiles(otherPackageDir);
@@ -310,7 +310,7 @@ function checkPackage(packageJsonPath, allPackages) {
     const indexContent = fs.readFileSync(indexFile, 'utf-8');
 
     for (const file of sourceFiles) {
-      if (file === indexFile) continue;
+      if (file === indexFile) {continue;}
 
       // Skip test files, internal files
       const relativeFile = path.relative(path.dirname(indexFile), file);
@@ -326,7 +326,7 @@ function checkPackage(packageJsonPath, allPackages) {
 
       // Check if file is re-exported from index
       const fileExports = allExports.get(file) || [];
-      if (fileExports.length === 0) continue;
+      if (fileExports.length === 0) {continue;}
 
       const fileBasename = path.basename(file).replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '');
       const isReExported =
@@ -352,7 +352,7 @@ function checkPackage(packageJsonPath, allPackages) {
   // Step 5: Check package.json exports consistency
   if (packageJson.exports && typeof packageJson.exports === 'object') {
     for (const [exportPath, exportConfig] of Object.entries(packageJson.exports)) {
-      if (exportPath === '.') continue; // Main export
+      if (exportPath === '.') {continue;} // Main export
 
       // Get the actual file path
       const actualPath =
@@ -360,7 +360,7 @@ function checkPackage(packageJsonPath, allPackages) {
           ? exportConfig
           : exportConfig.import || exportConfig.require || exportConfig.default;
 
-      if (!actualPath || typeof actualPath !== 'string') continue;
+      if (!actualPath || typeof actualPath !== 'string') {continue;}
 
       // Check if file exists
       const fullPath = path.join(packageDir, actualPath);
@@ -390,20 +390,20 @@ function findPackages(rootDir, filterPackage) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       // Filter by package name if specified
-      if (filterPackage && pkgDir.name !== filterPackage) continue;
+      if (filterPackage && pkgDir.name !== filterPackage) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -463,7 +463,7 @@ function main() {
       result.missingBarrelExports.length +
       result.inconsistentExports.length;
 
-    if (issueCount === 0 && !options.verbose) continue;
+    if (issueCount === 0 && !options.verbose) {continue;}
 
     hasIssues = issueCount > 0;
 

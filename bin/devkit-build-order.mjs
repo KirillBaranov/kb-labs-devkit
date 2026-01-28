@@ -57,17 +57,17 @@ function findPackages(rootDir) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -92,7 +92,7 @@ function buildDependencyGraph(packages) {
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     const packageName = packageJson.name;
 
-    if (!packageName || !packageName.startsWith('@kb-labs/')) continue;
+    if (!packageName || !packageName.startsWith('@kb-labs/')) {continue;}
 
     graph.set(packageName, {
       deps: new Set(),
@@ -108,16 +108,25 @@ function buildDependencyGraph(packages) {
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     const packageName = packageJson.name;
 
-    if (!packageName || !packageName.startsWith('@kb-labs/')) continue;
+    if (!packageName || !packageName.startsWith('@kb-labs/')) {continue;}
 
     const allDeps = {
       ...packageJson.dependencies,
       ...packageJson.devDependencies,
     };
 
-    for (const dep of Object.keys(allDeps)) {
-      // Only track workspace dependencies
-      if (dep.startsWith('@kb-labs/') && graph.has(dep)) {
+    for (const [dep, version] of Object.entries(allDeps)) {
+      // Skip external dependencies
+      if (!dep.startsWith('@kb-labs/')) continue;
+
+      // Track ALL workspace dependencies regardless of protocol
+      // Supports: workspace:*, workspace:^1.0.0, link:../path, *
+      const isWorkspaceDep =
+        version.startsWith('workspace:') ||
+        version.startsWith('link:') ||
+        version === '*';
+
+      if (isWorkspaceDep && graph.has(dep)) {
         graph.get(packageName).deps.add(dep);
       }
     }
@@ -258,11 +267,11 @@ function getBuildOrderForPackage(graph, packageName) {
   const order = [];
 
   function visit(pkg) {
-    if (visited.has(pkg)) return;
+    if (visited.has(pkg)) {return;}
     visited.add(pkg);
 
     const node = graph.get(pkg);
-    if (!node) return;
+    if (!node) {return;}
 
     // Visit dependencies first
     for (const dep of node.deps) {

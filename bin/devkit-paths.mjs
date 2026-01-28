@@ -47,7 +47,7 @@ async function collectWorkspacePackages(workspaceRoots, cwd) {
 
   for (const { dir, patterns } of workspaceRoots) {
     for (const pattern of patterns) {
-      if (!pattern || typeof pattern !== 'string') continue;
+      if (!pattern || typeof pattern !== 'string') {continue;}
       const searchPattern = pattern.endsWith('/') ? `${pattern}package.json` : join(pattern, 'package.json');
       const matches = await glob(searchPattern, {
         cwd: dir,
@@ -60,8 +60,8 @@ async function collectWorkspacePackages(workspaceRoots, cwd) {
           const pkgPath = resolve(dir, match);
           const pkgDir = dirname(pkgPath);
           const pkg = await readJson(pkgPath);
-          if (!pkg?.name || typeof pkg.name !== 'string') continue;
-          if (!pkg.name.startsWith('@kb-labs/')) continue;
+          if (!pkg?.name || typeof pkg.name !== 'string') {continue;}
+          if (!pkg.name.startsWith('@kb-labs/')) {continue;}
           if (!packages.has(pkg.name)) {
             packages.set(pkg.name, pkgDir);
           }
@@ -156,7 +156,7 @@ async function generatePathsFile(rootDir) {
     const relDir = relative(rootDir, pkgDir).replace(/\\/g, '/');
     const { entries, wildcardBase } = await resolveSourceEntries(pkgDir);
     const resolvedEntries = entries.map((abs) => relative(rootDir, abs).replace(/\\/g, '/'));
-    if (!resolvedEntries.length) continue;
+    if (!resolvedEntries.length) {continue;}
     paths[name] = resolvedEntries;
     if (wildcardBase) {
       const relBase = relative(rootDir, wildcardBase).replace(/\\/g, '/');

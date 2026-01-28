@@ -39,11 +39,11 @@ function findWorkspacePackages() {
 
   for (const monorepo of monorepos) {
     const packagesDir = join(rootDir, monorepo, 'packages');
-    if (!existsSync(packagesDir)) continue;
+    if (!existsSync(packagesDir)) {continue;}
 
     for (const pkg of readdirSync(packagesDir)) {
       const pkgJsonPath = join(packagesDir, pkg, 'package.json');
-      if (!existsSync(pkgJsonPath)) continue;
+      if (!existsSync(pkgJsonPath)) {continue;}
 
       try {
         const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));

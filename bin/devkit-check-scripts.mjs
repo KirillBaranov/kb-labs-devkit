@@ -63,7 +63,7 @@ async function getWorkspacePackages(root) {
 
   // Find all package.json files
   const findPackages = (dir) => {
-    if (dir.includes('node_modules') || dir.includes('dist')) return;
+    if (dir.includes('node_modules') || dir.includes('dist')) {return;}
 
     const entries = readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
@@ -177,19 +177,19 @@ async function fixPackageScripts(pkg, issues) {
   for (const issue of issues) {
     switch (issue.type) {
       case 'missing-script':
-        if (!pkgJson.scripts) pkgJson.scripts = {};
+        if (!pkgJson.scripts) {pkgJson.scripts = {};}
         pkgJson.scripts[issue.script] = issue.expected;
         modified = true;
         break;
 
       case 'missing-dev-dep':
-        if (!pkgJson.devDependencies) pkgJson.devDependencies = {};
+        if (!pkgJson.devDependencies) {pkgJson.devDependencies = {};}
         pkgJson.devDependencies[issue.dependency] = issue.expected;
         modified = true;
         break;
 
       case 'missing-engine':
-        if (!pkgJson.engines) pkgJson.engines = {};
+        if (!pkgJson.engines) {pkgJson.engines = {};}
         pkgJson.engines[issue.engine] = issue.expected;
         modified = true;
         break;

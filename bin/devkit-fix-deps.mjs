@@ -6,11 +6,13 @@
  * Automatically fixes common dependency issues:
  * 1. Removes unused dependencies
  * 2. Adds missing workspace dependencies
- * 3. Aligns duplicate dependency versions
+ * 3. Adds missing npm packages
+ * 4. Aligns duplicate dependency versions
  *
  * Usage:
  *   kb-devkit-fix-deps --remove-unused     # Remove unused dependencies
  *   kb-devkit-fix-deps --add-missing       # Add missing workspace deps
+ *   kb-devkit-fix-deps --add-missing-npm   # Add missing npm packages
  *   kb-devkit-fix-deps --align-versions    # Align duplicate versions
  *   kb-devkit-fix-deps --all               # Apply all fixes
  *   kb-devkit-fix-deps --dry-run           # Show what would be changed
@@ -45,6 +47,7 @@ const args = process.argv.slice(2);
 const options = {
   removeUnused: args.includes('--remove-unused'),
   addMissing: args.includes('--add-missing'),
+  addMissingNpm: args.includes('--add-missing-npm'),
   alignVersions: args.includes('--align-versions'),
   all: args.includes('--all'),
   dryRun: args.includes('--dry-run'),
@@ -59,6 +62,7 @@ const options = {
 if (options.all) {
   options.removeUnused = true;
   options.addMissing = true;
+  options.addMissingNpm = true;
   options.alignVersions = true;
 }
 
@@ -70,19 +74,19 @@ function findPackages(rootDir, filterPackage) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
-      if (filterPackage && pkgDir.name !== filterPackage) continue;
+      if (filterPackage && pkgDir.name !== filterPackage) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -103,15 +107,27 @@ function extractImportsFromFile(filePath) {
   const imports = new Set();
 
   const patterns = [
+    // Static imports: import X from 'pkg'
     /import\s+(?:[\w*{}\n\r\t, ]+\s+from\s+)?['"]([^'"]+)['"]/g,
+    // Dynamic imports: import('pkg')
     /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    // Require: require('pkg')
     /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    // Template literal dynamic imports: import(`pkg`)
+    /import\s*\(\s*`([^`]+)`\s*\)/g,
+    // Template literal require: require(`pkg`)
+    /require\s*\(\s*`([^`]+)`\s*\)/g,
   ];
 
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(content)) !== null) {
-      const importPath = match[1];
+      let importPath = match[1];
+
+      // Skip template variables like ${var} - we can't analyze these statically
+      if (importPath.includes('${')) {
+        continue;
+      }
 
       // Extract package name (handle scoped packages)
       if (!importPath.startsWith('.') && !importPath.startsWith('/')) {
@@ -133,7 +149,7 @@ function findUsedDependencies(packageDir) {
   const used = new Set();
 
   // Directories to scan
-  const dirsToScan = ['src', 'test', 'tests', '__tests__', 'scripts'];
+  const dirsToScan = ['src', 'test', 'tests', '__tests__', 'scripts', 'bin'];
 
   for (const dir of dirsToScan) {
     const dirPath = path.join(packageDir, dir);
@@ -154,6 +170,8 @@ function findUsedDependencies(packageDir) {
     'eslint.config.mjs',
     'jest.config.ts',
     'jest.config.js',
+    'rollup.config.ts',
+    'rollup.config.js',
   ];
 
   for (const configFile of configPatterns) {
@@ -161,6 +179,33 @@ function findUsedDependencies(packageDir) {
     if (fs.existsSync(configPath)) {
       const imports = extractImportsFromFile(configPath);
       imports.forEach((imp) => used.add(imp));
+    }
+  }
+
+  // Scan package.json scripts for CLI tool usage
+  const packageJsonPath = path.join(packageDir, 'package.json');
+  if (fs.existsSync(packageJsonPath)) {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    if (packageJson.scripts) {
+      for (const script of Object.values(packageJson.scripts)) {
+        // Extract command names from scripts (first word before space or flags)
+        const commands = script.match(/\b([a-z0-9@\-_/.]+)/gi) || [];
+        for (const cmd of commands) {
+          // Extract package name from command (e.g., "tsx" from "tsx src/index.ts")
+          // Handle scoped packages (e.g., "@vitest/ui")
+          if (cmd.startsWith('@')) {
+            const scopedMatch = cmd.match(/^(@[^/]+\/[^/\s]+)/);
+            if (scopedMatch) {
+              used.add(scopedMatch[1]);
+            }
+          } else {
+            const pkgMatch = cmd.match(/^([a-z0-9\-_]+)/);
+            if (pkgMatch) {
+              used.add(pkgMatch[1]);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -203,6 +248,21 @@ function removeUnusedDependencies(packageJsonPath, dryRun, verbose = false) {
   const peerDeps = packageJson.peerDependencies || {};
   const toRemove = [];
 
+  // Also mark dependencies used in bin scripts as used
+  if (packageJson.bin) {
+    const binScripts = typeof packageJson.bin === 'string'
+      ? [packageJson.bin]
+      : Object.values(packageJson.bin);
+
+    for (const binPath of binScripts) {
+      const fullBinPath = path.join(packageDir, binPath);
+      if (fs.existsSync(fullBinPath)) {
+        const imports = extractImportsFromFile(fullBinPath);
+        imports.forEach((imp) => used.add(imp));
+      }
+    }
+  }
+
   // Build tools that should not be removed (used via bin/cli, not imports)
   const keepDeps = new Set([
     // TypeScript & build
@@ -216,6 +276,11 @@ function removeUnusedDependencies(packageJsonPath, dryRun, verbose = false) {
     'cross-env',
     'tsx',
     'ts-node',
+    'npm-run-all',
+    'npm-run-all2',
+    'wait-on',
+    'nodemon',
+    'chokidar-cli',
 
     // Linting & formatting
     'eslint',
@@ -232,12 +297,20 @@ function removeUnusedDependencies(packageJsonPath, dryRun, verbose = false) {
     '@vitest/ui',
     'playwright',
     '@playwright/test',
+    'happy-dom',
+    'jsdom',
 
     // KB Labs devkit
     '@kb-labs/devkit',
 
     // Node types (used implicitly)
     '@types/node',
+
+    // Package managers & publish tools
+    'changesets',
+    '@changesets/cli',
+    'turbo',
+    'lerna',
   ]);
 
   // Patterns for packages that shouldn't be removed
@@ -256,28 +329,35 @@ function removeUnusedDependencies(packageJsonPath, dryRun, verbose = false) {
   ];
 
   for (const dep of Object.keys(allDeps)) {
+    // Always keep workspace dependencies (they define the architecture)
+    const depValue = allDeps[dep];
+    if (typeof depValue === 'string' && (depValue.startsWith('workspace:') || depValue.startsWith('link:'))) {
+      if (verbose) {kept.push({ dep, reason: 'workspace/link dependency' });}
+      continue;
+    }
+
     // Skip if it's used in code
     if (used.has(dep)) {
-      if (verbose) kept.push({ dep, reason: 'used in code' });
+      if (verbose) {kept.push({ dep, reason: 'used in code' });}
       continue;
     }
 
     // Skip if it's a peer dependency (consumers might need it)
     if (peerDeps[dep]) {
-      if (verbose) kept.push({ dep, reason: 'peer dependency' });
+      if (verbose) {kept.push({ dep, reason: 'peer dependency' });}
       continue;
     }
 
     // Skip if it's in keepDeps
     if (keepDeps.has(dep)) {
-      if (verbose) kept.push({ dep, reason: 'build tool' });
+      if (verbose) {kept.push({ dep, reason: 'build tool' });}
       continue;
     }
 
     // Skip if matches any keep pattern
     const matchedPattern = keepPatterns.find((pattern) => pattern.test(dep));
     if (matchedPattern) {
-      if (verbose) kept.push({ dep, reason: `pattern: ${matchedPattern.source}` });
+      if (verbose) {kept.push({ dep, reason: `pattern: ${matchedPattern.source}` });}
       continue;
     }
 
@@ -357,6 +437,151 @@ function addMissingDependencies(packageJsonPath, dryRun, allPackages) {
 }
 
 /**
+ * Add missing npm dependencies (non-workspace packages)
+ * Uses devkit-check-imports to find missing npm packages
+ */
+function addMissingNpmDependencies(packageJsonPath, dryRun) {
+  const packageDir = path.dirname(packageJsonPath);
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+  const packageName = packageJson.name;
+
+  if (!packageName || !packageName.startsWith('@kb-labs/')) {
+    return { added: 0, deps: [], packageName };
+  }
+
+  // Run devkit-check-imports for this package to get missing npm deps
+  const shortName = packageName.replace('@kb-labs/', '');
+  let missingNpmDeps = [];
+
+  try {
+    const output = execSync(
+      `node ${path.join(__dirname, 'devkit-check-imports.mjs')} --package=${shortName} 2>&1`,
+      { encoding: 'utf-8', stdio: 'pipe' }
+    );
+
+    // Parse output to extract missing npm dependencies
+    const lines = output.split('\n');
+    let inMissingNpmSection = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Check if we're in the "Missing npm dependencies" section
+      if (line.includes('Missing npm dependencies')) {
+        inMissingNpmSection = true;
+        continue;
+      }
+
+      // Exit section when we hit a separator, new section, or empty line after deps
+      if (inMissingNpmSection && (line.includes('────') || line.includes('📊') || line.includes('🔴') || line.includes('🟠') || line.includes('🔄') || line.includes('Summary'))) {
+        inMissingNpmSection = false;
+        break;
+      }
+
+      // Extract dependency name from lines like "[36m      pino[0m"
+      if (inMissingNpmSection && line.trim() && !line.includes('└─') && !line.includes('Used in')) {
+        // Remove ANSI color codes and whitespace
+        const cleaned = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\[[0-9]+m/g, '').trim();
+        if (cleaned && /^[a-z@]/.test(cleaned) && !cleaned.includes('Missing') && !cleaned.includes('dependencies')) {
+          missingNpmDeps.push(cleaned);
+        }
+      }
+    }
+  } catch (error) {
+    // If check-imports fails (non-zero exit), still try to parse output
+    if (error.stdout) {
+      const lines = error.stdout.toString().split('\n');
+      let inMissingNpmSection = false;
+
+      for (const line of lines) {
+        if (line.includes('Missing npm dependencies')) {
+          inMissingNpmSection = true;
+          continue;
+        }
+
+        if (inMissingNpmSection && (line.includes('────') || line.includes('📊') || line.includes('🔴') || line.includes('🟠') || line.includes('🔄'))) {
+          inMissingNpmSection = false;
+          break;
+        }
+
+        if (inMissingNpmSection && line.trim() && !line.includes('└─') && !line.includes('Used in')) {
+          const cleaned = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\[[0-9]+m/g, '').trim();
+          if (cleaned && /^[a-z@]/.test(cleaned) && !cleaned.includes('Missing')) {
+            missingNpmDeps.push(cleaned);
+          }
+        }
+      }
+    }
+
+    // If still no deps found, return empty
+    if (missingNpmDeps.length === 0) {
+      return { added: 0, deps: [], packageName };
+    }
+  }
+
+  if (missingNpmDeps.length === 0) {
+    return { added: 0, deps: [], packageName };
+  }
+
+  const existing = { ...packageJson.dependencies, ...packageJson.devDependencies };
+  const toAdd = [];
+
+  // Get most common version from other packages in monorepo
+  const rootDir = path.resolve(__dirname, '..');
+  const allPackages = findPackages(rootDir);
+
+  for (const npmDep of missingNpmDeps) {
+    // Skip if trying to add package to itself
+    if (npmDep === packageName) {
+      continue;
+    }
+
+    if (!existing[npmDep]) {
+      // Find version used in other packages
+      let version = null;
+      for (const pkgPath of allPackages) {
+        const pkgJson = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const allDeps = { ...pkgJson.dependencies, ...pkgJson.devDependencies };
+        if (allDeps[npmDep]) {
+          version = allDeps[npmDep];
+          break;
+        }
+      }
+
+      // If not found in other packages, use 'latest' placeholder
+      if (!version) {
+        version = 'latest';
+      }
+
+      toAdd.push({ name: npmDep, version });
+    }
+  }
+
+  if (toAdd.length > 0) {
+    if (!dryRun) {
+      if (!packageJson.dependencies) {
+        packageJson.dependencies = {};
+      }
+
+      for (const { name, version } of toAdd) {
+        packageJson.dependencies[name] = version;
+      }
+
+      // Sort dependencies
+      packageJson.dependencies = Object.fromEntries(
+        Object.entries(packageJson.dependencies).sort()
+      );
+
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+    }
+
+    return { added: toAdd.length, deps: toAdd.map((d) => `${d.name}@${d.version}`), packageName };
+  }
+
+  return { added: 0, deps: [], packageName };
+}
+
+/**
  * Collect version statistics
  */
 function collectVersionStats(packages) {
@@ -398,7 +623,7 @@ function alignDependencyVersions(packages, dryRun) {
   const changes = [];
 
   for (const [dep, versions] of versionMap.entries()) {
-    if (versions.size <= 1) continue;
+    if (versions.size <= 1) {continue;}
 
     // Pick the most common version (or newest if tie)
     const versionArray = Array.from(versions.entries()).sort(
@@ -410,7 +635,7 @@ function alignDependencyVersions(packages, dryRun) {
 
     // Align all packages to target version
     for (const [version, packagePaths] of versions.entries()) {
-      if (version === targetVersion) continue;
+      if (version === targetVersion) {continue;}
 
       for (const packagePath of packagePaths) {
         if (!dryRun) {
@@ -841,6 +1066,35 @@ function main() {
       log(`\n   ✅ Added ${totalAdded} missing dependency(ies)\n`, 'green');
     } else {
       log('   ✅ No missing dependencies found\n', 'green');
+    }
+  }
+
+  // Add missing npm dependencies
+  if (options.addMissingNpm) {
+    log('📦 Adding missing npm dependencies...\n', 'cyan');
+
+    let totalAdded = 0;
+    const additions = [];
+
+    for (const packagePath of packages) {
+      const result = addMissingNpmDependencies(packagePath, options.dryRun);
+      if (result.added > 0) {
+        totalAdded += result.added;
+        additions.push(result);
+
+        log(`   ${result.packageName}`, 'yellow');
+        for (const dep of result.deps) {
+          log(`      + ${dep}`, 'gray');
+        }
+      }
+    }
+
+    if (totalAdded > 0) {
+      hasChanges = true;
+      log(`\n   ✅ Added ${totalAdded} missing npm package(s)\n`, 'green');
+      log(`   💡 Run 'pnpm install' to install new dependencies\n`, 'cyan');
+    } else {
+      log('   ✅ No missing npm dependencies found\n', 'green');
     }
   }
 

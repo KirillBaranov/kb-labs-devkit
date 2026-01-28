@@ -80,7 +80,7 @@ function findAllPackages() {
       : [path.join(rootDir, pattern)];
 
     for (const dir of dirs) {
-      if (!fs.existsSync(dir)) continue;
+      if (!fs.existsSync(dir)) {continue;}
 
       const subDirs = fs.readdirSync(dir, { withFileTypes: true })
         .filter((d) => d.isDirectory())
@@ -91,7 +91,7 @@ function findAllPackages() {
         if (fs.existsSync(pkgPath)) {
           try {
             const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-            if (packageFilter && !pkg.name.includes(packageFilter)) continue;
+            if (packageFilter && !pkg.name.includes(packageFilter)) {continue;}
             packages.push({ name: pkg.name, path: subDir, pkg });
           } catch (err) {
             // Skip invalid package.json
@@ -109,23 +109,23 @@ function findAllPackages() {
  */
 function isDistStale(pkgPath) {
   const distFile = path.join(pkgPath, 'dist/index.js');
-  if (!fs.existsSync(distFile)) return false;
+  if (!fs.existsSync(distFile)) {return false;}
 
   const distMtime = fs.statSync(distFile).mtime.getTime();
 
   // Check all source files
   const srcDir = path.join(pkgPath, 'src');
-  if (!fs.existsSync(srcDir)) return false;
+  if (!fs.existsSync(srcDir)) {return false;}
 
   const checkDir = (dir) => {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (checkDir(fullPath)) return true;
+        if (checkDir(fullPath)) {return true;}
       } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
         const srcMtime = fs.statSync(fullPath).mtime.getTime();
-        if (srcMtime > distMtime) return true;
+        if (srcMtime > distMtime) {return true;}
       }
     }
     return false;
@@ -145,7 +145,7 @@ function checkMissingRuntimeDeps(packages) {
 
   for (const { name, path: pkgPath, pkg } of packages) {
     const distFile = path.join(pkgPath, 'dist/index.js');
-    if (!fs.existsSync(distFile)) continue;
+    if (!fs.existsSync(distFile)) {continue;}
 
     // Check if dist is stale
     if (isDistStale(pkgPath)) {
@@ -174,7 +174,7 @@ function checkMissingRuntimeDeps(packages) {
 
     for (const [, importPath] of importMatches) {
       // Skip relative imports and node builtins
-      if (importPath.startsWith('.') || importPath.startsWith('node:')) continue;
+      if (importPath.startsWith('.') || importPath.startsWith('node:')) {continue;}
 
       // Extract package name (handle @scope/package)
       const pkgName = importPath.startsWith('@')
@@ -182,7 +182,7 @@ function checkMissingRuntimeDeps(packages) {
         : importPath.split('/')[0];
 
       // Skip Node.js built-ins
-      if (nodeBuiltins.has(pkgName)) continue;
+      if (nodeBuiltins.has(pkgName)) {continue;}
 
       // Check if declared
       if (!declaredDeps[pkgName]) {
@@ -223,7 +223,7 @@ function checkWorkspaceLinkIssues(packages) {
     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
     for (const [depName, depVersion] of Object.entries(deps)) {
-      if (depVersion !== 'workspace:*') continue;
+      if (depVersion !== 'workspace:*') {continue;}
 
       // Check if this dep is in a different repo
       let depRepo = null;

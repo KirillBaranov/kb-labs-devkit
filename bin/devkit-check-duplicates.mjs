@@ -53,20 +53,20 @@ function findPackages(rootDir, filterPackage) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       // Filter by package name if specified
-      if (filterPackage && pkgDir.name !== filterPackage) continue;
+      if (filterPackage && pkgDir.name !== filterPackage) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -89,7 +89,7 @@ function collectDependencies(packages) {
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     const packageName = packageJson.name;
 
-    if (!packageName || !packageName.startsWith('@kb-labs/')) continue;
+    if (!packageName || !packageName.startsWith('@kb-labs/')) {continue;}
 
     const allDeps = {
       ...packageJson.dependencies,
@@ -163,12 +163,12 @@ function findOutdatedCommon(dependencyMap) {
   const outdated = [];
 
   for (const [dep, usages] of dependencyMap.entries()) {
-    if (usages.length < 3) continue; // Only check widely-used deps
+    if (usages.length < 3) {continue;} // Only check widely-used deps
 
     const versions = usages.map((u) => u.version);
     const uniqueVersions = new Set(versions);
 
-    if (uniqueVersions.size === 1) continue; // All same version
+    if (uniqueVersions.size === 1) {continue;} // All same version
 
     // Try to determine which version is newest (simple semver comparison)
     const sortedVersions = Array.from(uniqueVersions).sort((a, b) => {
@@ -212,10 +212,10 @@ function findSimilarFiles(packages) {
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     const packageName = packageJson.name;
 
-    if (!packageName || !packageName.startsWith('@kb-labs/')) continue;
+    if (!packageName || !packageName.startsWith('@kb-labs/')) {continue;}
 
     const srcDir = path.join(packageDir, 'src');
-    if (!fs.existsSync(srcDir)) continue;
+    if (!fs.existsSync(srcDir)) {continue;}
 
     function walk(dir) {
       const entries = fs.readdirSync(dir, { withFileTypes: true });

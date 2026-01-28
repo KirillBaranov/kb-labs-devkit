@@ -57,19 +57,19 @@ function findPackages(rootDir, filterPackage) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
-      if (filterPackage && pkgDir.name !== filterPackage) continue;
+      if (filterPackage && pkgDir.name !== filterPackage) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -90,7 +90,7 @@ function findPackages(rootDir, filterPackage) {
  */
 function hasTypeScriptSources(packageDir) {
   const srcDir = path.join(packageDir, 'src');
-  if (!fs.existsSync(srcDir)) return false;
+  if (!fs.existsSync(srcDir)) {return false;}
 
   function walkDir(dir) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -99,7 +99,7 @@ function hasTypeScriptSources(packageDir) {
       const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        if (walkDir(fullPath)) return true;
+        if (walkDir(fullPath)) {return true;}
       } else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {
         return true;
       }
@@ -173,7 +173,7 @@ function checkDistFolder(packageDir) {
       const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        if (hasDtsFiles(fullPath)) return true;
+        if (hasDtsFiles(fullPath)) {return true;}
       } else if (entry.isFile() && entry.name.endsWith('.d.ts')) {
         return true;
       }
@@ -383,7 +383,7 @@ function buildTypesDependencyGraph(results) {
 
   // Build graph of packages that provide types
   for (const result of results) {
-    if (!result || !result.hasTypeScript) continue;
+    if (!result || !result.hasTypeScript) {continue;}
 
     const hasTypes = result.tsupConfig.hasDtsTrue && !result.issues.some(i => i.type === 'dts_false');
 

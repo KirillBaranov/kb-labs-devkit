@@ -404,7 +404,7 @@ async function main() {
   if (totalIssues > 0) {
     console.log(color('red', `🔴 Issues: ${totalIssues} package(s) with errors\n`));
     for (const { pkg, issues } of results) {
-      if (issues.length === 0) continue;
+      if (issues.length === 0) {continue;}
       console.log(color('yellow', `   ${pkg.name}`));
       for (const issue of issues) {
         console.log(color('gray', `      ${issue.file}`));
@@ -418,7 +418,7 @@ async function main() {
     console.log(color('yellow', `⚠️  Warnings: ${totalWarnings} non-critical issues\n`));
     if (opts.verbose) {
       for (const { pkg, warnings } of results) {
-        if (warnings.length === 0) continue;
+        if (warnings.length === 0) {continue;}
         console.log(color('yellow', `   ${pkg.name}`));
         for (const warning of warnings) {
           console.log(color('gray', `      ${warning.file}`));

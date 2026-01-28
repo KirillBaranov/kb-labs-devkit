@@ -88,17 +88,17 @@ function findPackages(rootDir) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -153,7 +153,7 @@ function calculatePackageSize(packageDir) {
  * Infer layer from package name
  */
 function inferLayer(packageName) {
-  if (!packageName) return 'unknown';
+  if (!packageName) {return 'unknown';}
 
   // Extract meaningful part after @kb-labs/
   const name = packageName.replace('@kb-labs/', '');
@@ -198,7 +198,7 @@ function buildDependencyGraph(packages) {
     const packageJson = JSON.parse(fs.readFileSync(pkg.path, 'utf-8'));
     const packageName = packageJson.name;
 
-    if (!packageName || !packageName.startsWith('@kb-labs/')) continue;
+    if (!packageName || !packageName.startsWith('@kb-labs/')) {continue;}
 
     const size = calculatePackageSize(pkg.dir);
     const layer = inferLayer(packageName);
@@ -280,11 +280,11 @@ function calculateMetrics(graph) {
  * Calculate depth of package in dependency tree
  */
 function calculateDepth(packageName, graph, visited) {
-  if (visited.has(packageName)) return 0; // circular dependency
+  if (visited.has(packageName)) {return 0;} // circular dependency
   visited.add(packageName);
 
   const deps = graph.get(packageName).dependencies;
-  if (deps.length === 0) return 0;
+  if (deps.length === 0) {return 0;}
 
   let maxDepth = 0;
   for (const dep of deps) {
@@ -317,7 +317,7 @@ function detectCircularDependencies(graph) {
 
     for (const dep of deps) {
       if (!visited.has(dep)) {
-        if (dfs(dep)) return true;
+        if (dfs(dep)) {return true;}
       } else if (recStack.has(dep)) {
         // Found a cycle
         const cycleStart = path.indexOf(dep);
@@ -470,7 +470,7 @@ function detectAnomalies(graph, metrics) {
 
     for (const dep of data.dependencies) {
       const depLayer = graph.get(dep)?.metadata.layer;
-      if (!depLayer) continue;
+      if (!depLayer) {continue;}
 
       const depLayerLevel = layerHierarchy[depLayer];
 
@@ -498,7 +498,7 @@ function detectAnomalies(graph, metrics) {
   for (const [packageA, dataA] of graph.entries()) {
     for (const packageB of dataA.dependencies) {
       const dataB = graph.get(packageB);
-      if (!dataB) continue;
+      if (!dataB) {continue;}
 
       // Check if B also depends on A
       if (dataB.dependencies.includes(packageA)) {
@@ -1143,8 +1143,8 @@ async function main() {
   if (options.layer) {
     jsonData.packages = jsonData.packages.filter((p) => p.layer === options.layer);
     jsonData.anomalies = jsonData.anomalies.filter((a) => {
-      if (a.package) return jsonData.packages.some((p) => p.name === a.package);
-      if (a.packages) return a.packages.some((pkg) => jsonData.packages.some((p) => p.name === pkg));
+      if (a.package) {return jsonData.packages.some((p) => p.name === a.package);}
+      if (a.packages) {return a.packages.some((pkg) => jsonData.packages.some((p) => p.name === pkg));}
       return false;
     });
   }

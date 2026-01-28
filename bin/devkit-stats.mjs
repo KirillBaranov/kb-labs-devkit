@@ -54,17 +54,17 @@ function findPackages(rootDir) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -144,7 +144,7 @@ function collectStats(packages) {
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     const packageName = packageJson.name;
 
-    if (!packageName || !packageName.startsWith('@kb-labs/')) continue;
+    if (!packageName || !packageName.startsWith('@kb-labs/')) {continue;}
 
     stats.overview.totalPackages++;
 
@@ -306,7 +306,7 @@ function calculateHealthScore(stats) {
  * Format bytes
  */
 function formatBytes(bytes) {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {return '0 B';}
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));

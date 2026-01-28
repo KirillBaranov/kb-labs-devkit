@@ -59,19 +59,19 @@ function findPackages(rootDir, filterPackage) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
-      if (filterPackage && pkgDir.name !== filterPackage) continue;
+      if (filterPackage && pkgDir.name !== filterPackage) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
 
@@ -208,14 +208,14 @@ function checkDependencies(packageJson, packageDir, workspaceNames) {
 function checkExports(packageJson, packageDir) {
   const issues = [];
 
-  if (!packageJson.exports) return issues;
+  if (!packageJson.exports) {return issues;}
 
   function checkExportPath(exportKey, exportValue, parentPath = 'exports') {
     if (typeof exportValue === 'string') {
       // Skip conditions like "import", "require", "types", "default"
       if (exportValue.startsWith('./') || exportValue.startsWith('../')) {
         // Skip glob patterns (e.g., ./dist/*)
-        if (exportValue.includes('*')) return;
+        if (exportValue.includes('*')) {return;}
 
         const { exists } = pathExists(packageDir, exportValue);
 
@@ -253,7 +253,7 @@ function checkExports(packageJson, packageDir) {
 function checkBin(packageJson, packageDir) {
   const issues = [];
 
-  if (!packageJson.bin) return issues;
+  if (!packageJson.bin) {return issues;}
 
   const bins = typeof packageJson.bin === 'string'
     ? { [packageJson.name]: packageJson.bin }
@@ -313,7 +313,7 @@ function checkTsconfig(packageDir) {
   const issues = [];
   const tsconfigPath = path.join(packageDir, 'tsconfig.json');
 
-  if (!fs.existsSync(tsconfigPath)) return issues;
+  if (!fs.existsSync(tsconfigPath)) {return issues;}
 
   try {
     const content = fs.readFileSync(tsconfigPath, 'utf-8');
@@ -334,8 +334,8 @@ function checkTsconfig(packageDir) {
         const extendsPath = extendsList[i];
 
         // Skip non-string values or node_modules references
-        if (typeof extendsPath !== 'string') continue;
-        if (extendsPath.startsWith('@') || extendsPath.includes('node_modules')) continue;
+        if (typeof extendsPath !== 'string') {continue;}
+        if (extendsPath.startsWith('@') || extendsPath.includes('node_modules')) {continue;}
 
         const { exists } = pathExists(packageDir, extendsPath);
 
@@ -382,7 +382,7 @@ function checkTsconfig(packageDir) {
           const target = targets[i];
 
           // Skip wildcards
-          if (target.includes('*')) continue;
+          if (target.includes('*')) {continue;}
 
           const baseUrl = tsconfig.compilerOptions.baseUrl || '.';
           const basePath = path.resolve(packageDir, baseUrl);
@@ -418,11 +418,11 @@ function checkTsconfig(packageDir) {
 function checkFilesField(packageJson, packageDir) {
   const issues = [];
 
-  if (!packageJson.files || !Array.isArray(packageJson.files)) return issues;
+  if (!packageJson.files || !Array.isArray(packageJson.files)) {return issues;}
 
   for (const file of packageJson.files) {
     // Skip glob patterns
-    if (file.includes('*')) continue;
+    if (file.includes('*')) {continue;}
 
     const { exists } = pathExists(packageDir, file);
 
@@ -546,7 +546,7 @@ function printResults(results) {
   // Print errors first
   for (const [type, issues] of byType.entries()) {
     const errors = issues.filter(i => i.severity === 'error');
-    if (errors.length === 0) continue;
+    if (errors.length === 0) {continue;}
 
     log(`\n${issueTypeNames[type] || type} (${errors.length}):\n`, 'red');
 
@@ -574,7 +574,7 @@ function printResults(results) {
   // Print warnings
   for (const [type, issues] of byType.entries()) {
     const warnings = issues.filter(i => i.severity === 'warning');
-    if (warnings.length === 0) continue;
+    if (warnings.length === 0) {continue;}
 
     log(`\n${issueTypeNames[type] || type} (${warnings.length}) ⚠️:\n`, 'yellow');
 

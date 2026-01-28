@@ -2,24 +2,37 @@
 
 /**
  * KB Labs Quality Assurance Runner
- * 
+ *
  * Runs comprehensive checks across entire monorepo:
- * 1. Build all packages in correct layer order
- * 2. Run linter on all packages
- * 3. Run type-check on all packages  
- * 4. Run tests on all packages
- * 
- * Continues on errors and shows comprehensive report at the end.
- * 
+ * 1. Build all packages in correct layer order (incremental)
+ * 2. Run linter on all packages (with smart caching)
+ * 3. Run type-check on all packages (with smart caching)
+ * 4. Run tests on all packages (with smart caching)
+ *
+ * Features:
+ * - Incremental builds (skips packages where src/ hasn't changed)
+ * - Smart caching (skips lint/type-check/test for unchanged packages)
+ * - Per-package and per-repo filtering
+ * - Baseline regression detection for all 4 check types
+ * - JSON output for CI/CD and agents
+ *
  * Usage:
- *   npx kb-devkit-qa                    # Human-readable output
- *   npx kb-devkit-qa --json             # JSON output for agents
- *   npx kb-devkit-qa --skip-build       # Skip build phase
+ *   npx kb-devkit-qa                              # Run on all packages (with caching)
+ *   npx kb-devkit-qa --json                       # JSON output for agents
+ *   npx kb-devkit-qa --package=@kb-labs/cli-core  # Run on specific package
+ *   npx kb-devkit-qa --repo=kb-labs-core          # Run on entire repo
+ *   npx kb-devkit-qa --scope=workflow             # Run on packages matching scope
+ *   npx kb-devkit-qa --no-cache                   # Disable smart caching
+ *   npx kb-devkit-qa --skip-build                 # Skip build phase
+ *   npx kb-devkit-qa --skip-lint                  # Skip lint phase
+ *   npx kb-devkit-qa --skip-types                 # Skip type-check phase
+ *   npx kb-devkit-qa --skip-tests                 # Skip test phase
  */
 
 import { execSync } from 'child_process'
-import { readFileSync, existsSync, statSync, readdirSync } from 'fs'
+import { readFileSync, existsSync, statSync, readdirSync, writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
+import { createHash } from 'crypto'
 
 // Parse args
 const args = process.argv.slice(2)
@@ -28,6 +41,16 @@ const skipBuild = args.includes('--skip-build')
 const skipLint = args.includes('--skip-lint')
 const skipTypes = args.includes('--skip-types')
 const skipTests = args.includes('--skip-tests')
+const noCache = args.includes('--no-cache') // NEW: Disable caching
+
+// NEW: Parse filter options
+const packageFilter = args.find(arg => arg.startsWith('--package='))?.split('=')[1]
+const repoFilter = args.find(arg => arg.startsWith('--repo='))?.split('=')[1]
+const scopeFilter = args.find(arg => arg.startsWith('--scope='))?.split('=')[1]
+
+// Cache directory
+const CACHE_DIR = '.qa-cache'
+const CACHE_FILE = join(CACHE_DIR, 'package-hashes.json')
 
 // ANSI colors (disabled in JSON mode)
 const colors = jsonMode ? {
@@ -62,16 +85,121 @@ const results = {
   test: { passed: [], failed: [], skipped: [], errors: {} },
 }
 
-// Get all workspace packages
+// Get repo name from package path
+function getRepoFromPackage(pkg) {
+  // Extract repo from path: /path/to/kb-labs-REPO/packages/...
+  const match = pkg.path.match(/\/(kb-labs-[^/]+)/)
+  return match ? match[1] : null
+}
+
+// Load package hash cache
+function loadCache() {
+  if (!existsSync(CACHE_FILE)) {
+    return {}
+  }
+  try {
+    return JSON.parse(readFileSync(CACHE_FILE, 'utf-8'))
+  } catch (err) {
+    return {}
+  }
+}
+
+// Save package hash cache
+function saveCache(cache) {
+  if (!existsSync(CACHE_DIR)) {
+    mkdirSync(CACHE_DIR, { recursive: true })
+  }
+  writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2))
+}
+
+// Calculate hash for package sources
+function calculatePackageHash(pkgPath) {
+  const srcDir = join(pkgPath, 'src')
+  const pkgJson = join(pkgPath, 'package.json')
+
+  if (!existsSync(srcDir)) {
+    return null // No src directory
+  }
+
+  const hash = createHash('sha256')
+
+  // Hash all files in src/
+  function hashDirectory(dir) {
+    try {
+      const files = readdirSync(dir, { withFileTypes: true })
+      for (const file of files) {
+        const fullPath = join(dir, file.name)
+        if (file.isDirectory()) {
+          hashDirectory(fullPath)
+        } else {
+          const content = readFileSync(fullPath, 'utf-8')
+          hash.update(content)
+        }
+      }
+    } catch (err) {
+      // Ignore permission errors
+    }
+  }
+
+  hashDirectory(srcDir)
+
+  // Hash package.json (dependencies)
+  if (existsSync(pkgJson)) {
+    const content = readFileSync(pkgJson, 'utf-8')
+    hash.update(content)
+  }
+
+  return hash.digest('hex')
+}
+
+// Check if package sources have changed since last QA run
+function hasPackageChanged(pkgName, pkgPath, cache) {
+  if (noCache) return true // Skip cache if --no-cache flag
+
+  const currentHash = calculatePackageHash(pkgPath)
+  if (!currentHash) return true // No src dir, always run
+
+  const cachedHash = cache[pkgName]
+  return currentHash !== cachedHash
+}
+
+// Get all workspace packages (with optional filtering)
 function getWorkspacePackages() {
   try {
     const output = execSync('pnpm list -r --depth -1 --json', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'ignore'],
     })
-    return JSON.parse(output)
+    let packages = JSON.parse(output)
       .filter(pkg => pkg.name?.startsWith('@kb-labs/'))
       .map(pkg => ({ name: pkg.name, path: pkg.path }))
+
+    // Apply filters
+    if (packageFilter) {
+      packages = packages.filter(p => p.name === packageFilter)
+      if (packages.length === 0) {
+        log(`❌ Package not found: ${packageFilter}`, 'red')
+        process.exit(1)
+      }
+    }
+
+    if (repoFilter) {
+      packages = packages.filter(p => getRepoFromPackage(p) === repoFilter)
+      if (packages.length === 0) {
+        log(`❌ No packages found in repo: ${repoFilter}`, 'red')
+        process.exit(1)
+      }
+    }
+
+    if (scopeFilter) {
+      packages = packages.filter(p => p.name.includes(scopeFilter))
+      if (packages.length === 0) {
+        log(`❌ No packages found matching scope: ${scopeFilter}`, 'red')
+        process.exit(1)
+      }
+    }
+
+    return packages
   } catch (err) {
     log('Failed to get workspace packages', 'red')
     process.exit(1)
@@ -153,12 +281,20 @@ async function buildAllLayers() {
     // Get package paths for timestamp checking
     const allPackages = getWorkspacePackages()
     const pkgPathMap = new Map(allPackages.map(p => [p.name, p.path]))
+    const filteredPackageNames = new Set(allPackages.map(p => p.name))
 
     // Build each layer
     for (const layer of layers) {
-      log(`🔨 Building Layer ${layer.num}/${layers.length} (${layer.packages.length} packages)...`, 'cyan')
+      // Filter layer packages based on current filters
+      const layerPackagesToBuild = layer.packages.filter(pkg => filteredPackageNames.has(pkg))
 
-      for (const pkg of layer.packages) {
+      if (layerPackagesToBuild.length === 0) {
+        continue // Skip empty layers
+      }
+
+      log(`🔨 Building Layer ${layer.num}/${layers.length} (${layerPackagesToBuild.length} packages)...`, 'cyan')
+
+      for (const pkg of layerPackagesToBuild) {
         const pkgPath = pkgPathMap.get(pkg)
 
         // Check if rebuild is needed
@@ -193,13 +329,26 @@ async function buildAllLayers() {
 }
 
 // Run command on all packages
-async function runOnAllPackages(command, label, resultKey) {
+async function runOnAllPackages(command, label, resultKey, cache) {
   header(`${label}...`)
-  
+
   const packages = getWorkspacePackages()
   log(`Running on ${packages.length} packages\n`, 'gray')
-  
+
+  let cacheHits = 0
+
   for (const pkg of packages) {
+    // NEW: Check if package has changed
+    const changed = hasPackageChanged(pkg.name, pkg.path, cache)
+
+    if (!changed && !noCache) {
+      // Skip unchanged package
+      results[resultKey].skipped.push(pkg.name)
+      cacheHits++
+      if (!jsonMode) process.stdout.write(`${colors.gray}-${colors.reset}`)
+      continue
+    }
+
     try {
       execSync(`pnpm --filter ${pkg.name} ${command}`, {
         encoding: 'utf-8',
@@ -207,6 +356,12 @@ async function runOnAllPackages(command, label, resultKey) {
       })
       results[resultKey].passed.push(pkg.name)
       if (!jsonMode) process.stdout.write(`${colors.green}.${colors.reset}`)
+
+      // NEW: Update cache with current hash
+      const currentHash = calculatePackageHash(pkg.path)
+      if (currentHash) {
+        cache[pkg.name] = currentHash
+      }
     } catch (err) {
       // Check if script doesn't exist
       if (err.message.includes('missing script')) {
@@ -219,39 +374,156 @@ async function runOnAllPackages(command, label, resultKey) {
       }
     }
   }
-  
+
   if (!jsonMode) console.log('')
-  log(`\n✅ ${label} complete: ${results[resultKey].passed.length} passed, ${results[resultKey].failed.length} failed, ${results[resultKey].skipped.length} skipped\n`, 'green')
+
+  const skippedByCache = cacheHits
+  const totalSkipped = results[resultKey].skipped.length
+
+  if (skippedByCache > 0) {
+    log(`\n✅ ${label} complete: ${results[resultKey].passed.length} passed, ${results[resultKey].failed.length} failed, ${totalSkipped} skipped (${skippedByCache} unchanged)\n`, 'green')
+  } else {
+    log(`\n✅ ${label} complete: ${results[resultKey].passed.length} passed, ${results[resultKey].failed.length} failed, ${totalSkipped} skipped\n`, 'green')
+  }
 }
 
-// Load baseline if exists
-function loadBaseline() {
-  const baselinePath = '.baseline/types-results.json'
-  if (existsSync(baselinePath)) {
+// Load all baselines if they exist
+function loadBaselines() {
+  const baselines = {
+    build: null,
+    lint: null,
+    typeCheck: null,
+    test: null,
+  }
+
+  // Load build baseline
+  const buildPath = '.baseline/build-failures.json'
+  if (existsSync(buildPath)) {
     try {
-      return JSON.parse(readFileSync(baselinePath, 'utf-8'))
+      baselines.build = JSON.parse(readFileSync(buildPath, 'utf-8'))
     } catch (err) {
-      return null
+      // Ignore parsing errors
     }
   }
-  return null
+
+  // Load lint baseline (aggregated)
+  const lintPath = '.baseline/lint-errors-aggregated.json'
+  if (existsSync(lintPath)) {
+    try {
+      baselines.lint = JSON.parse(readFileSync(lintPath, 'utf-8'))
+    } catch (err) {
+      // Ignore parsing errors
+    }
+  }
+
+  // Load type-check baseline
+  const typesPath = '.baseline/type-errors.json'
+  if (existsSync(typesPath)) {
+    try {
+      baselines.typeCheck = JSON.parse(readFileSync(typesPath, 'utf-8'))
+    } catch (err) {
+      // Ignore parsing errors
+    }
+  }
+
+  // Load test baseline
+  const testPath = '.baseline/test-results.json'
+  if (existsSync(testPath)) {
+    try {
+      baselines.test = JSON.parse(readFileSync(testPath, 'utf-8'))
+    } catch (err) {
+      // Ignore parsing errors
+    }
+  }
+
+  return baselines
 }
 
-// Calculate diff with baseline
-function calculateDiff(baseline) {
-  if (!baseline || !baseline.packages) return null
-  
-  const currentFailed = new Set(results.typeCheck.failed)
-  const baselineFailed = new Set(
-    Object.entries(baseline.packages)
-      .filter(([_, data]) => data.errors > 0)
-      .map(([pkg, _]) => pkg)
-  )
-  
+// Calculate diff with baselines for all check types
+function calculateDiff(baselines) {
+  if (!baselines) return null
+
+  const diff = {
+    build: calculateCheckDiff('build', baselines.build),
+    lint: calculateCheckDiff('lint', baselines.lint),
+    typeCheck: calculateCheckDiff('typeCheck', baselines.typeCheck),
+    test: calculateCheckDiff('test', baselines.test),
+  }
+
+  return diff
+}
+
+// Calculate diff for a specific check type
+function calculateCheckDiff(checkKey, baseline) {
+  if (!baseline) return null
+
+  const currentFailed = new Set(results[checkKey].failed)
+  let baselineFailed = new Set()
+  let perPackage = []
+
+  // Extract baseline failures based on format
+  if (checkKey === 'build' && baseline.failures) {
+    // build-failures.json format: { failures: ["pkg1", "pkg2"], summary: {...} }
+    baselineFailed = new Set(baseline.failures || [])
+  } else if (checkKey === 'lint' && baseline.packages) {
+    // lint-errors-aggregated.json format: { packages: [{name, errors, warnings}] }
+    baselineFailed = new Set(
+      baseline.packages
+        .filter(pkg => pkg.errors > 0 || pkg.warnings > 0)
+        .map(pkg => pkg.name)
+    )
+
+    // Per-package comparison for lint
+    const allPackages = new Set([...currentFailed, ...baselineFailed])
+    for (const pkgName of allPackages) {
+      const baselinePkg = baseline.packages.find(p => p.name === pkgName)
+      const baselineErrors = baselinePkg ? (baselinePkg.errors + baselinePkg.warnings) : 0
+      const currentFailing = currentFailed.has(pkgName) ? 1 : 0
+
+      if (baselineErrors > 0 || currentFailing > 0) {
+        perPackage.push({
+          package: pkgName,
+          baseline: baselineErrors,
+          current: currentFailing ? '1+' : 0, // We don't have exact counts from current run
+          isRegression: currentFailing > 0 && baselineErrors === 0
+        })
+      }
+    }
+  } else if (checkKey === 'typeCheck' && baseline.packages) {
+    // type-errors.json format: { packages: [{name, errors, warnings, coverage}] }
+    baselineFailed = new Set(
+      baseline.packages
+        .filter(pkg => pkg.errors > 0)
+        .map(pkg => pkg.name)
+    )
+
+    // Per-package comparison for type-check
+    const allPackages = new Set([...currentFailed, ...baselineFailed])
+    for (const pkgName of allPackages) {
+      const baselinePkg = baseline.packages.find(p => p.name === pkgName)
+      const baselineErrors = baselinePkg ? baselinePkg.errors : 0
+      const currentFailing = currentFailed.has(pkgName) ? 1 : 0
+
+      if (baselineErrors > 0 || currentFailing > 0) {
+        perPackage.push({
+          package: pkgName,
+          baseline: baselineErrors,
+          current: currentFailing ? '1+' : 0,
+          isRegression: currentFailing > 0 && baselineErrors === 0
+        })
+      }
+    }
+  } else if (checkKey === 'test' && baseline.summary) {
+    // test-results.json format: { summary: {total, passed, failed} }
+    // We don't have per-package test baseline, so just use summary level
+    // For now, all failed tests are considered as potential regressions
+    baselineFailed = new Set() // No per-package data
+  }
+
   const newFailures = [...currentFailed].filter(pkg => !baselineFailed.has(pkg))
   const fixed = [...baselineFailed].filter(pkg => !currentFailed.has(pkg))
   const stillFailing = [...currentFailed].filter(pkg => baselineFailed.has(pkg))
-  
+
   return {
     newFailures,
     fixed,
@@ -260,16 +532,83 @@ function calculateDiff(baseline) {
       baseline: baselineFailed.size,
       current: currentFailed.size,
       delta: currentFailed.size - baselineFailed.size,
-    }
+    },
+    perPackage: perPackage.sort((a, b) => {
+      // Sort regressions first, then by baseline errors
+      if (a.isRegression !== b.isRegression) return a.isRegression ? -1 : 1
+      return (typeof b.baseline === 'number' ? b.baseline : 0) - (typeof a.baseline === 'number' ? a.baseline : 0)
+    })
   }
 }
 
+// Group results by repo
+function groupByRepo() {
+  const packages = getWorkspacePackages()
+  const byRepo = {}
+
+  // Helper to get status for a package in a check
+  const getStatus = (checkKey, pkgName) => {
+    if (results[checkKey].passed.includes(pkgName)) return 'passed'
+    if (results[checkKey].failed.includes(pkgName)) return 'failed'
+    if (results[checkKey].skipped.includes(pkgName)) return 'skipped'
+    return 'not-run'
+  }
+
+  // Process all packages
+  for (const pkg of packages) {
+    const repo = getRepoFromPackage(pkg)
+    if (!repo) continue
+
+    // Initialize repo if needed
+    if (!byRepo[repo]) {
+      byRepo[repo] = {
+        repo,
+        packages: [],
+        summary: {
+          build: { passed: 0, failed: 0, skipped: 0 },
+          lint: { passed: 0, failed: 0, skipped: 0 },
+          typeCheck: { passed: 0, failed: 0, skipped: 0 },
+          test: { passed: 0, failed: 0, skipped: 0 },
+        }
+      }
+    }
+
+    // Add package with statuses
+    const pkgData = {
+      name: pkg.name,
+      build: getStatus('build', pkg.name),
+      lint: getStatus('lint', pkg.name),
+      typeCheck: getStatus('typeCheck', pkg.name),
+      test: getStatus('test', pkg.name),
+    }
+    byRepo[repo].packages.push(pkgData)
+
+    // Update summary counts
+    for (const checkKey of ['build', 'lint', 'typeCheck', 'test']) {
+      const status = pkgData[checkKey]
+      if (status === 'passed') byRepo[repo].summary[checkKey].passed++
+      else if (status === 'failed') byRepo[repo].summary[checkKey].failed++
+      else if (status === 'skipped') byRepo[repo].summary[checkKey].skipped++
+    }
+  }
+
+  return byRepo
+}
+
 // Print JSON report for agents
-function printJsonReport(baseline, diff) {
+function printJsonReport(baselines, diff) {
+  // Group by repo if filtering is active
+  const byRepo = (packageFilter || repoFilter || scopeFilter) ? groupByRepo() : null
+
   const report = {
-    status: (results.build.failed.length + results.lint.failed.length + 
+    status: (results.build.failed.length + results.lint.failed.length +
              results.typeCheck.failed.length + results.test.failed.length) === 0 ? 'passed' : 'failed',
     timestamp: new Date().toISOString(),
+    filter: {
+      package: packageFilter || null,
+      repo: repoFilter || null,
+      scope: scopeFilter || null,
+    },
     summary: {
       build: {
         passed: results.build.passed.length,
@@ -305,18 +644,19 @@ function printJsonReport(baseline, diff) {
       test: results.test.errors,
     },
     baseline: diff ? {
-      newFailures: diff.newFailures,
-      fixed: diff.fixed,
-      stillFailing: diff.stillFailing,
-      summary: diff.summary,
+      build: diff.build,
+      lint: diff.lint,
+      typeCheck: diff.typeCheck,
+      test: diff.test,
     } : null,
+    byRepo: byRepo || null,
   }
-  
+
   console.log(JSON.stringify(report, null, 2))
 }
 
 // Print human-readable report
-function printHumanReport(baseline, diff) {
+function printHumanReport(baselines, diff) {
   header('📊 QA Summary Report')
   
   const checks = [
@@ -364,35 +704,49 @@ function printHumanReport(baseline, diff) {
   // Show baseline diff if available
   if (diff) {
     log('')
-    log('📈 Baseline Comparison (Type Check):', 'cyan')
-    log(`   Baseline errors: ${diff.summary.baseline}`, 'gray')
-    log(`   Current errors:  ${diff.summary.current}`, 'gray')
-    
-    if (diff.summary.delta > 0) {
-      log(`   ❌ +${diff.summary.delta} NEW failures (regression!)`, 'red')
-    } else if (diff.summary.delta < 0) {
-      log(`   ✅ ${Math.abs(diff.summary.delta)} failures FIXED (improvement!)`, 'green')
-    } else {
-      log(`   ➡️  No change`, 'yellow')
-    }
-    
-    if (diff.newFailures.length > 0) {
-      log(`\n   🆕 New failures (${diff.newFailures.length}):`, 'red')
-      for (const pkg of diff.newFailures.slice(0, 5)) {
-        log(`     - ${pkg}`, 'red')
+    log('📈 Baseline Comparison:', 'cyan')
+
+    const checkTypes = [
+      { key: 'build', label: 'Build', icon: '🔨' },
+      { key: 'lint', label: 'Lint', icon: '🔍' },
+      { key: 'typeCheck', label: 'Type Check', icon: '📘' },
+      { key: 'test', label: 'Tests', icon: '🧪' },
+    ]
+
+    for (const checkType of checkTypes) {
+      const checkDiff = diff[checkType.key]
+      if (!checkDiff) continue
+
+      log(`\n${checkType.icon} ${checkType.label}:`, 'cyan')
+      log(`   Baseline: ${checkDiff.summary.baseline} failed`, 'gray')
+      log(`   Current:  ${checkDiff.summary.current} failed`, 'gray')
+
+      if (checkDiff.summary.delta > 0) {
+        log(`   ❌ +${checkDiff.summary.delta} NEW failures (regression!)`, 'red')
+      } else if (checkDiff.summary.delta < 0) {
+        log(`   ✅ ${Math.abs(checkDiff.summary.delta)} failures FIXED (improvement!)`, 'green')
+      } else {
+        log(`   ➡️  No change`, 'yellow')
       }
-      if (diff.newFailures.length > 5) {
-        log(`     ... and ${diff.newFailures.length - 5} more`, 'gray')
+
+      if (checkDiff.newFailures.length > 0) {
+        log(`   🆕 New failures (${checkDiff.newFailures.length}):`, 'red')
+        for (const pkg of checkDiff.newFailures.slice(0, 3)) {
+          log(`     - ${pkg}`, 'red')
+        }
+        if (checkDiff.newFailures.length > 3) {
+          log(`     ... and ${checkDiff.newFailures.length - 3} more`, 'gray')
+        }
       }
-    }
-    
-    if (diff.fixed.length > 0) {
-      log(`\n   ✅ Fixed (${diff.fixed.length}):`, 'green')
-      for (const pkg of diff.fixed.slice(0, 5)) {
-        log(`     - ${pkg}`, 'green')
-      }
-      if (diff.fixed.length > 5) {
-        log(`     ... and ${diff.fixed.length - 5} more`, 'gray')
+
+      if (checkDiff.fixed.length > 0) {
+        log(`   ✅ Fixed (${checkDiff.fixed.length}):`, 'green')
+        for (const pkg of checkDiff.fixed.slice(0, 3)) {
+          log(`     - ${pkg}`, 'green')
+        }
+        if (checkDiff.fixed.length > 3) {
+          log(`     ... and ${checkDiff.fixed.length - 3} more`, 'gray')
+        }
       }
     }
   }
@@ -414,49 +768,72 @@ function printHumanReport(baseline, diff) {
 // Main
 async function main() {
   if (!jsonMode) {
-    log(`\n${colors.bright}${colors.blue}🚀 KB Labs QA Runner${colors.reset}\n`)
+    let header = `\n${colors.bright}${colors.blue}🚀 KB Labs QA Runner${colors.reset}`
+
+    // Show filter info
+    if (packageFilter) {
+      header += `\n${colors.yellow}📦 Filtered: --package=${packageFilter}${colors.reset}`
+    } else if (repoFilter) {
+      header += `\n${colors.yellow}📁 Filtered: --repo=${repoFilter}${colors.reset}`
+    } else if (scopeFilter) {
+      header += `\n${colors.yellow}🔍 Filtered: --scope=${scopeFilter}${colors.reset}`
+    }
+
+    if (noCache) {
+      header += `\n${colors.yellow}🚫 Cache disabled (--no-cache)${colors.reset}`
+    }
+
+    log(header + '\n')
   }
-  
+
   try {
+    // NEW: Load cache at the start
+    const cache = loadCache()
+
     // 1. Build (in correct order)
     if (!skipBuild) {
       await buildAllLayers()
     } else {
       log('⏭️  Skipping build (--skip-build)', 'yellow')
     }
-    
+
     // 2. Lint
     if (!skipLint) {
-      await runOnAllPackages('run lint', '🔍 Running linter', 'lint')
+      await runOnAllPackages('run lint', '🔍 Running linter', 'lint', cache)
     } else {
       log('⏭️  Skipping lint (--skip-lint)', 'yellow')
     }
-    
+
     // 3. Type check
     if (!skipTypes) {
-      await runOnAllPackages('run type-check', '📘 Running type check', 'typeCheck')
+      await runOnAllPackages('run type-check', '📘 Running type check', 'typeCheck', cache)
     } else {
       log('⏭️  Skipping type-check (--skip-types)', 'yellow')
     }
-    
+
     // 4. Tests
     if (!skipTests) {
-      await runOnAllPackages('run test', '🧪 Running tests', 'test')
+      await runOnAllPackages('run test', '🧪 Running tests', 'test', cache)
     } else {
       log('⏭️  Skipping tests (--skip-tests)', 'yellow')
     }
-    
-    // Load baseline and calculate diff
-    const baseline = loadBaseline()
-    const diff = calculateDiff(baseline)
-    
+
+    // NEW: Save cache at the end
+    if (!noCache) {
+      saveCache(cache)
+    }
+
+    // Load baselines and calculate diff
+    const baselines = loadBaselines()
+    const diff = calculateDiff(baselines)
+
     // Print report
     if (jsonMode) {
-      printJsonReport(baseline, diff)
+      printJsonReport(baselines, diff)
     } else {
-      printHumanReport(baseline, diff)
+      printHumanReport(baselines, diff)
     }
-    
+
   } catch (err) {
     if (jsonMode) {
       console.log(JSON.stringify({ status: 'error', message: err.message }, null, 2))

@@ -64,17 +64,17 @@ function findPackages(rootDir) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
       const tsconfigPath = path.join(packagesDir, pkgDir.name, 'tsconfig.json');
@@ -133,7 +133,7 @@ function analyzeTypeErrors(program, packageName) {
   const warnings = [];
 
   for (const diagnostic of diagnostics) {
-    if (!diagnostic.file) continue;
+    if (!diagnostic.file) {continue;}
 
     const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(
       diagnostic.start
@@ -349,7 +349,7 @@ function buildImpactGraph(results) {
 
   // Build reverse dependency map
   for (const result of results) {
-    if (!result.success) continue;
+    if (!result.success) {continue;}
 
     graph.set(result.name, new Set());
 
@@ -373,7 +373,7 @@ function calculateImpact(packageName, impactGraph) {
 
   while (queue.length > 0) {
     const current = queue.shift();
-    if (visited.has(current)) continue;
+    if (visited.has(current)) {continue;}
     visited.add(current);
 
     const dependents = impactGraph.get(current);

@@ -47,7 +47,7 @@ async function collectWorkspacePackages(workspaceRoots) {
   
   for (const { dir, patterns } of workspaceRoots) {
     for (const pattern of patterns) {
-      if (!pattern || typeof pattern !== 'string') continue;
+      if (!pattern || typeof pattern !== 'string') {continue;}
       const searchPattern = pattern.endsWith('/') ? `${pattern}package.json` : join(pattern, 'package.json');
       const matches = await glob(searchPattern, {
         cwd: dir,
@@ -59,8 +59,8 @@ async function collectWorkspacePackages(workspaceRoots) {
         try {
           const pkgPath = resolve(dir, match);
           const pkg = await readJson(pkgPath);
-          if (!pkg?.name || typeof pkg.name !== 'string') continue;
-          if (!pkg.name.startsWith('@kb-labs/')) continue;
+          if (!pkg?.name || typeof pkg.name !== 'string') {continue;}
+          if (!pkg.name.startsWith('@kb-labs/')) {continue;}
           packages.add(pkg.name);
         } catch (error) {
           console.warn('[devkit-tsup-external] failed to read package', match, error);

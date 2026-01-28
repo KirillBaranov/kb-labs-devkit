@@ -92,19 +92,19 @@ function findPackages(rootDir, filterPackage) {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) continue;
+    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
 
     const repoPath = path.join(rootDir, entry.name);
     const packagesDir = path.join(repoPath, 'packages');
 
-    if (!fs.existsSync(packagesDir)) continue;
+    if (!fs.existsSync(packagesDir)) {continue;}
 
     const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
 
     for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) continue;
+      if (!pkgDir.isDirectory()) {continue;}
 
-      if (filterPackage && pkgDir.name !== filterPackage) continue;
+      if (filterPackage && pkgDir.name !== filterPackage) {continue;}
 
       const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
       const srcDir = path.join(packagesDir, pkgDir.name, 'src');
@@ -141,7 +141,7 @@ function findSourceFiles(dir) {
 
     if (entry.isDirectory()) {
       // Skip node_modules and dist
-      if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+      if (entry.name === 'node_modules' || entry.name === 'dist') {continue;}
       files.push(...findSourceFiles(fullPath));
     } else if (/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name)) {
       files.push(fullPath);
@@ -176,14 +176,14 @@ function extractDeprecated(filePath, content) {
 
     // Extract reason from @deprecated line
     const deprecatedLineMatch = match[0].match(/@deprecated\s*([^\n*]*)/);
-    let reason = (deprecatedLineMatch?.[1] || '').trim();
+    const reason = (deprecatedLineMatch?.[1] || '').trim();
 
     // Get context: the code AFTER the JSDoc comment
     const contextLines = [];
     for (let i = endLine; i < Math.min(endLine + 5, lines.length); i++) {
       const line = lines[i];
       // Skip empty lines
-      if (line.trim() === '') continue;
+      if (line.trim() === '') {continue;}
 
       contextLines.push(line);
 
@@ -191,7 +191,7 @@ function extractDeprecated(filePath, content) {
       if (/^\s*(export\s+)?(default\s+)?(async\s+)?(abstract\s+)?(function|class|interface|type|const|let|var|enum)\s+\w+/.test(line)) {
         break;
       }
-      if (contextLines.length >= 2) break;
+      if (contextLines.length >= 2) {break;}
     }
 
     // Try to extract the name of the deprecated item
@@ -208,13 +208,13 @@ function extractDeprecated(filePath, content) {
 
     // Determine item type from context
     let itemType = 'unknown';
-    if (/\bfunction\b/.test(contextText)) itemType = 'function';
-    else if (/\bclass\b/.test(contextText)) itemType = 'class';
-    else if (/\binterface\b/.test(contextText)) itemType = 'interface';
-    else if (/\btype\s+\w+/.test(contextText)) itemType = 'type';
-    else if (/\bconst\b/.test(contextText)) itemType = 'const';
-    else if (/\benum\b/.test(contextText)) itemType = 'enum';
-    else if (/\blet\b|\bvar\b/.test(contextText)) itemType = 'variable';
+    if (/\bfunction\b/.test(contextText)) {itemType = 'function';}
+    else if (/\bclass\b/.test(contextText)) {itemType = 'class';}
+    else if (/\binterface\b/.test(contextText)) {itemType = 'interface';}
+    else if (/\btype\s+\w+/.test(contextText)) {itemType = 'type';}
+    else if (/\bconst\b/.test(contextText)) {itemType = 'const';}
+    else if (/\benum\b/.test(contextText)) {itemType = 'enum';}
+    else if (/\blet\b|\bvar\b/.test(contextText)) {itemType = 'variable';}
 
     // Skip if no code follows (orphan comment)
     if (contextLines.length === 0 || itemName === 'unknown') {
@@ -236,7 +236,7 @@ function extractDeprecated(filePath, content) {
   const seen = new Set();
   return deprecated.filter((item) => {
     const key = `${item.file}:${item.itemName}`;
-    if (seen.has(key)) return false;
+    if (seen.has(key)) {return false;}
     seen.add(key);
     return true;
   });
@@ -282,7 +282,7 @@ function formatTable(results, rootDir) {
   log(`\n📋 Found ${totalDeprecated} @deprecated item(s)\n`, 'yellow');
 
   for (const result of results) {
-    if (result.deprecated.length === 0) continue;
+    if (result.deprecated.length === 0) {continue;}
 
     log(`\n📦 ${result.package} (${result.deprecated.length} deprecated)`, 'cyan');
     log('─'.repeat(60), 'gray');
@@ -405,7 +405,7 @@ function formatMarkdown(results, rootDir) {
   console.log('## Deprecated Items\n');
 
   for (const result of results) {
-    if (result.deprecated.length === 0) continue;
+    if (result.deprecated.length === 0) {continue;}
 
     console.log(`### ${result.package}\n`);
     console.log(`| Item | Type | Location | Reason |`);
