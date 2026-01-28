@@ -462,9 +462,15 @@ function calculateCheckDiff(checkKey, baseline) {
   let perPackage = []
 
   // Extract baseline failures based on format
-  if (checkKey === 'build' && baseline.failures) {
-    // build-failures.json format: { failures: ["pkg1", "pkg2"], summary: {...} }
-    baselineFailed = new Set(baseline.failures || [])
+  if (checkKey === 'build' && baseline.summary) {
+    // build-failures.json format: { packages: [{name, path, reason, errors}], summary: {...} }
+    if (baseline.packages && Array.isArray(baseline.packages)) {
+      // New format: has per-package data
+      baselineFailed = new Set(baseline.packages.map(pkg => pkg.name))
+    } else if (baseline.failures) {
+      // Old format: just array of package names
+      baselineFailed = new Set(baseline.failures || [])
+    }
   } else if (checkKey === 'lint' && baseline.packages) {
     // lint-errors-aggregated.json format: { packages: [{name, errors, warnings}] }
     baselineFailed = new Set(
@@ -514,10 +520,35 @@ function calculateCheckDiff(checkKey, baseline) {
       }
     }
   } else if (checkKey === 'test' && baseline.summary) {
-    // test-results.json format: { summary: {total, passed, failed} }
-    // We don't have per-package test baseline, so just use summary level
-    // For now, all failed tests are considered as potential regressions
-    baselineFailed = new Set() // No per-package data
+    // test-results.json format: { summary: {total, passed, failed}, packages: [{name, tests, passed, failed, status}] }
+    if (baseline.packages && Array.isArray(baseline.packages)) {
+      // New format: has per-package data
+      baselineFailed = new Set(
+        baseline.packages
+          .filter(pkg => pkg.failed > 0)
+          .map(pkg => pkg.name)
+      )
+
+      // Per-package comparison for tests
+      const allPackages = new Set([...currentFailed, ...baselineFailed])
+      for (const pkgName of allPackages) {
+        const baselinePkg = baseline.packages.find(p => p.name === pkgName)
+        const baselineFailed = baselinePkg ? baselinePkg.failed : 0
+        const currentFailing = currentFailed.has(pkgName) ? 1 : 0
+
+        if (baselineFailed > 0 || currentFailing > 0) {
+          perPackage.push({
+            package: pkgName,
+            baseline: baselineFailed,
+            current: currentFailing ? '1+' : 0,
+            isRegression: currentFailing > 0 && baselineFailed === 0
+          })
+        }
+      }
+    } else {
+      // Old format: no per-package data
+      baselineFailed = new Set() // No per-package data
+    }
   }
 
   const newFailures = [...currentFailed].filter(pkg => !baselineFailed.has(pkg))
