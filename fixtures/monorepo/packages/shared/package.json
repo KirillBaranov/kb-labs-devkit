@@ -22,7 +22,7 @@
     "type-check": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . --max-warnings=0 --ignore-pattern 'dist/**'",
     "format": "prettier -c .",
-    "test": "vitest run --reporter=dot --coverage=false"
+    "test": "vitest run --passWithNoTests --reporter=dot --coverage=false"
   },
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../../",
