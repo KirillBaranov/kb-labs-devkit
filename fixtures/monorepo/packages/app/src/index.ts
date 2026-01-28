@@ -6,7 +6,7 @@ import {
   validateRequired,
   type Logger,
   type Config
-} from '@fixture/shared'
+} from '../../shared/src/index.ts'
 
 export interface User {
   id: number

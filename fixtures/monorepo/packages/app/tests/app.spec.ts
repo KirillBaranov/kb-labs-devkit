@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { UserService, App } from '../src'
-import { ValidationError } from '@fixture/shared'
+import { ValidationError } from '../../shared/src/index.ts'
 
 describe('App fixture', () => {
   describe('UserService', () => {
