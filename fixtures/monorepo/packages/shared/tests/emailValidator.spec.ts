@@ -1,4 +1,5 @@
 // emailValidator.spec.ts
+import { describe, it, expect } from 'vitest';
 import { validateEmail } from '../src/emailValidator';
 
 describe('validateEmail', () => {
