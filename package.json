@@ -48,7 +48,9 @@
     "kb-devkit-freshness": "./bin/devkit-freshness.mjs",
     "kb-devkit-check-deprecated": "./bin/devkit-check-deprecated.mjs",
     "kb-devkit-check-build-readiness": "./bin/devkit-check-build-readiness.mjs",
-    "kb-devkit-health": "./bin/devkit-health.mjs"
+    "kb-devkit-health": "./bin/devkit-health.mjs",
+    "kb-devkit-qa": "./bin/kb-devkit-qa.mjs",
+    "kb-devkit-qa-history": "./bin/kb-devkit-qa-history.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",

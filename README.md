@@ -627,6 +627,86 @@ jobs:
           path: devkit-report.json
 ```
 
+### QA Runner
+
+**⚡ NEW: Comprehensive quality assurance with incremental builds**
+
+Run all quality checks across the entire monorepo (build, lint, type-check, tests):
+
+```bash
+# Run all QA checks
+npx kb-devkit-qa
+
+# Skip specific checks
+npx kb-devkit-qa --skip-build --skip-tests
+
+# JSON mode for AI agents
+npx kb-devkit-qa --json
+```
+
+**What it checks:**
+1. **Build** - All packages in correct layer order (13 layers, 125 packages)
+   - ⚡ **Incremental**: Only rebuilds when `src/` is newer than `dist/`
+   - 🚀 **Speed**: ~10-20 seconds when up-to-date (vs 5-10 minutes full rebuild)
+2. **Lint** - ESLint on all packages
+3. **Type Check** - TypeScript type checking on all packages
+4. **Tests** - Vitest tests on all packages (with `--passWithNoTests`)
+
+**Key features:**
+- ✅ Continues on errors (shows all failures, not just first)
+- ✅ Progress indicators: `.` = passed, `F` = failed, `-` = skipped (up-to-date)
+- ✅ Comprehensive summary report at the end
+- ✅ JSON mode for CI/CD and AI agents
+- ⚡ **30x faster** with incremental builds
+
+**Example output:**
+```
+🚀 KB Labs QA Runner
+
+🔨 Building all packages in correct dependency order...
+Found 13 layers to build
+
+🔨 Building Layer 1/13 (21 packages)...
+--------------------- (all skipped, up-to-date)
+
+✅ Build complete: 0 passed, 0 failed, 100 skipped (up-to-date)
+
+📊 QA Summary Report
+✅ Build:       100 skipped (up-to-date)
+❌ Lint:        70/125 passed (56%)
+❌ Type Check:  60/125 passed (48%)
+❌ Tests:       78/125 passed (62%)
+
+Total: 208 passed, 167 failed, 100 skipped
+```
+
+**Root commands (package.json):**
+```bash
+pnpm qa              # Run all checks
+pnpm qa:quick        # Skip tests
+pnpm qa:full         # With baseline comparison
+```
+
+**How incremental builds work:**
+- Compares modification times of `src/` vs `dist/`
+- Rebuilds only if source is newer than build output
+- Skips packages that are already up-to-date
+- First run builds all, subsequent runs ~20 seconds
+
+**JSON mode example:**
+```json
+{
+  "status": "failed",
+  "summary": {
+    "build": { "passed": 0, "failed": 0, "skipped": 100 },
+    "lint": { "passed": 70, "failed": 55, "skipped": 0 }
+  },
+  "failures": {
+    "lint": ["@kb-labs/cli", "@kb-labs/core", ...]
+  }
+}
+```
+
 ### Build Order Calculator
 
 Calculate the correct build order for packages based on dependencies:
@@ -1410,6 +1490,52 @@ jobs:
 - **TypeScript errors with module resolution?** — Ensure you're using `module: "NodeNext"` in your tsconfig.
 - **Importing specific files vs folders?** — Both are supported. Use `@kb-labs/devkit/tsconfig/node.json` for specific files or `
 
+
+## 📦 Complete Tools Summary
+
+DevKit provides **19 tools** for monorepo management and quality assurance:
+
+### Analysis Tools (8)
+1. **Import Checker** - Find broken imports, unused dependencies, circular deps
+2. **Export Checker** - Find unused exports and dead code
+3. **Duplicate Checker** - Find duplicate dependencies
+4. **Structure Checker** - Validate package structure
+5. **Naming Validator** - Enforce Pyramid Rule naming convention
+6. **Path Validator** - Validate workspace deps, exports, bin paths
+7. **TypeScript Types Audit** - Deep type safety analysis across monorepo
+8. **Visualizer** - Generate dependency graphs and stats
+
+### Automation Tools (8)
+1. **⚡ QA Runner** - Comprehensive quality checks with incremental builds (NEW!)
+2. **Quick Statistics** - Get health scores and metrics
+3. **Dependency Auto-Fixer** - Auto-fix dependency issues
+4. **CI Combo Tool** - Run all checks in one command
+5. **Build Order Calculator** - Determine correct build order
+6. **Types Order Calculator** - Calculate types generation order
+7. **Command Health Checker** - Verify all CLI commands work
+8. **TypeScript Types Checker** - Ensure all packages generate types
+
+### Infrastructure Tools (3)
+1. **Repository Sync** - Sync DevKit assets across projects
+2. **Path Aliases Generator** - Generate workspace path aliases
+3. **Tsup External Generator** - Generate external dependencies list
+
+### Quick Access
+```bash
+# Quality Assurance (recommended)
+npx kb-devkit-qa                    # ⚡ Incremental builds (~20s)
+npx kb-devkit-ci                    # All static checks
+
+# Analysis
+npx kb-devkit-check-imports         # Imports
+npx kb-devkit-check-exports         # Exports
+npx kb-devkit-types-audit           # Type safety
+
+# Automation
+npx kb-devkit-fix-deps --dry-run    # Fix dependencies
+npx kb-devkit-build-order --layers  # Build order
+npx kb-devkit-stats --health        # Health score
+```
 
 ## License
 
