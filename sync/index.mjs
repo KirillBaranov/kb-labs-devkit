@@ -1,6 +1,6 @@
 // Public API: sync runner used by bin and by consumers via import('@kb-labs/devkit/sync')
 import { createHash } from 'node:crypto';
-import { cp, mkdir, readFile, readdir, stat, writeFile, access } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, writeFile, access } from 'node:fs/promises';
 import { dirname, join, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';

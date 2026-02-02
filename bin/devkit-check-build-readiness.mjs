@@ -64,12 +64,11 @@ function findWorkspacePackages() {
 // Step 2: Get import checker results
 function getImportIssues() {
   try {
-    const output = execSync('npx kb-devkit-check-imports 2>&1', {
+    return execSync('npx kb-devkit-check-imports 2>&1', {
       cwd: rootDir,
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer
     });
-    return output;
   } catch (e) {
     return e.stdout || e.message;
   }

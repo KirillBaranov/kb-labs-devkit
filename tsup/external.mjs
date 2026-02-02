@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { promises as fs } from 'node:fs';
 import process from 'node:process';
@@ -104,9 +103,7 @@ export async function resolveTsupExternal(cwd = process.cwd()) {
   }
   
   // Combine workspace packages and local dependencies, remove duplicates
-  const allExternals = Array.from(new Set([...workspacePackages, ...localDeps])).sort();
-  
-  return allExternals;
+  return Array.from(new Set([...workspacePackages, ...localDeps])).sort();
 }
 
 

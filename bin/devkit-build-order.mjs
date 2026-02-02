@@ -117,7 +117,7 @@ function buildDependencyGraph(packages) {
 
     for (const [dep, version] of Object.entries(allDeps)) {
       // Skip external dependencies
-      if (!dep.startsWith('@kb-labs/')) continue;
+      if (!dep.startsWith('@kb-labs/')) {continue;}
 
       // Track ALL workspace dependencies regardless of protocol
       // Supports: workspace:*, workspace:^1.0.0, link:../path, *

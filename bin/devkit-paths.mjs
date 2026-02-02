@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { fileURLToPath } from 'node:url';
 import { dirname, resolve, relative, join } from 'node:path';
 import { promises as fs } from 'node:fs';
 import process from 'node:process';

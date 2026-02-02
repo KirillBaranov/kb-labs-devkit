@@ -285,7 +285,7 @@ function showTrends() {
       const lastBaseline = last.baseline[checkType.key]
       const firstBaseline = first.baseline[checkType.key]
 
-      if (!lastBaseline || !firstBaseline) continue
+      if (!lastBaseline || !firstBaseline) {continue}
 
       const delta = lastBaseline.summary.current - firstBaseline.summary.current
 
@@ -383,7 +383,7 @@ function detectRegressions() {
       const lastBaseline = last.baseline[checkType]
       const prevBaseline = previous.baseline[checkType]
 
-      if (!lastBaseline || !prevBaseline) continue
+      if (!lastBaseline || !prevBaseline) {continue}
 
       const delta = lastBaseline.summary.current - prevBaseline.summary.current
 

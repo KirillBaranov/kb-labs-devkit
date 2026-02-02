@@ -122,7 +122,7 @@ function extractImportsFromFile(filePath) {
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(content)) !== null) {
-      let importPath = match[1];
+      const importPath = match[1];
 
       // Skip template variables like ${var} - we can't analyze these statically
       if (importPath.includes('${')) {
@@ -451,7 +451,7 @@ function addMissingNpmDependencies(packageJsonPath, dryRun) {
 
   // Run devkit-check-imports for this package to get missing npm deps
   const shortName = packageName.replace('@kb-labs/', '');
-  let missingNpmDeps = [];
+  const missingNpmDeps = [];
 
   try {
     const output = execSync(

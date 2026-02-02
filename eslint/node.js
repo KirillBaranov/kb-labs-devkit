@@ -2,6 +2,7 @@
 import tseslint from 'typescript-eslint'
 import importPlugin from 'eslint-plugin-import'
 import unusedImports from 'eslint-plugin-unused-imports'
+import sonarjs from 'eslint-plugin-sonarjs'
 
 export default [
   // ---- ignore common build artifacts and generated files
@@ -28,6 +29,7 @@ export default [
     plugins: {
       import: importPlugin,
       'unused-imports': unusedImports,
+      sonarjs: sonarjs,
     },
     settings: {
       // Let eslint-plugin-import resolve TS paths and packages without extensions
@@ -96,6 +98,14 @@ export default [
       'no-throw-literal': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
+
+      // SonarJS rules (code quality & bug detection)
+      'sonarjs/no-duplicate-string': ['warn', { threshold: 5 }],
+      'sonarjs/cognitive-complexity': ['warn', 15],
+      'sonarjs/no-identical-functions': 'warn',
+      'sonarjs/no-collapsible-if': 'warn',
+      'sonarjs/no-redundant-boolean': 'warn',
+      'sonarjs/prefer-immediate-return': 'warn',
     },
   },
 
@@ -104,6 +114,18 @@ export default [
     files: ['**/*.vue'],
     languageOptions: {
       parserOptions: { extraFileExtensions: ['.vue'] },
+    },
+  },
+
+  // ---- test file overrides
+  {
+    files: [
+      '**/*.{test,spec}.{ts,tsx,js,jsx}',
+      '**/__tests__/**/*.{ts,tsx,js,jsx}',
+    ],
+    rules: {
+      // Disable duplicate string detection in tests - test literals should be inline for readability
+      'sonarjs/no-duplicate-string': 'off',
     },
   },
 ]

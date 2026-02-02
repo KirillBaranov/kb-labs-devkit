@@ -154,10 +154,10 @@ function calculatePackageHash(pkgPath) {
 
 // Check if package sources have changed since last QA run
 function hasPackageChanged(pkgName, pkgPath, cache) {
-  if (noCache) return true // Skip cache if --no-cache flag
+  if (noCache) {return true} // Skip cache if --no-cache flag
 
   const currentHash = calculatePackageHash(pkgPath)
-  if (!currentHash) return true // No src dir, always run
+  if (!currentHash) {return true} // No src dir, always run
 
   const cachedHash = cache[pkgName]
   return currentHash !== cachedHash
@@ -208,7 +208,7 @@ function getWorkspacePackages() {
 
 // Get latest modification time in directory recursively
 function getLatestMtime(dir) {
-  if (!existsSync(dir)) return 0
+  if (!existsSync(dir)) {return 0}
 
   let latest = 0
   try {
@@ -217,10 +217,10 @@ function getLatestMtime(dir) {
       const fullPath = join(dir, file.name)
       if (file.isDirectory()) {
         const dirMtime = getLatestMtime(fullPath)
-        if (dirMtime > latest) latest = dirMtime
+        if (dirMtime > latest) {latest = dirMtime}
       } else {
         const stat = statSync(fullPath)
-        if (stat.mtimeMs > latest) latest = stat.mtimeMs
+        if (stat.mtimeMs > latest) {latest = stat.mtimeMs}
       }
     }
   } catch (err) {
@@ -235,10 +235,10 @@ function needsRebuild(pkgPath) {
   const distDir = join(pkgPath, 'dist')
 
   // If dist doesn't exist, needs build
-  if (!existsSync(distDir)) return true
+  if (!existsSync(distDir)) {return true}
 
   // If src doesn't exist, skip (might be types-only package)
-  if (!existsSync(srcDir)) return false
+  if (!existsSync(srcDir)) {return false}
 
   // Compare modification times
   const srcMtime = getLatestMtime(srcDir)
@@ -300,7 +300,7 @@ async function buildAllLayers() {
         // Check if rebuild is needed
         if (pkgPath && !needsRebuild(pkgPath)) {
           results.build.skipped.push(pkg)
-          if (!jsonMode) process.stdout.write(`${colors.gray}-${colors.reset}`)
+          if (!jsonMode) {process.stdout.write(`${colors.gray}-${colors.reset}`)}
           continue
         }
 
@@ -310,14 +310,14 @@ async function buildAllLayers() {
             stdio: 'pipe',
           })
           results.build.passed.push(pkg)
-          if (!jsonMode) process.stdout.write(`${colors.green}.${colors.reset}`)
+          if (!jsonMode) {process.stdout.write(`${colors.green}.${colors.reset}`)}
         } catch (err) {
           results.build.failed.push(pkg)
           results.build.errors[pkg] = err.stderr || err.stdout || err.message
-          if (!jsonMode) process.stdout.write(`${colors.red}F${colors.reset}`)
+          if (!jsonMode) {process.stdout.write(`${colors.red}F${colors.reset}`)}
         }
       }
-      if (!jsonMode) console.log('')
+      if (!jsonMode) {console.log('')}
     }
     
     log(`\n✅ Build complete: ${results.build.passed.length} passed, ${results.build.failed.length} failed, ${results.build.skipped.length} skipped (up-to-date)\n`, 'green')
@@ -345,7 +345,7 @@ async function runOnAllPackages(command, label, resultKey, cache) {
       // Skip unchanged package
       results[resultKey].skipped.push(pkg.name)
       cacheHits++
-      if (!jsonMode) process.stdout.write(`${colors.gray}-${colors.reset}`)
+      if (!jsonMode) {process.stdout.write(`${colors.gray}-${colors.reset}`)}
       continue
     }
 
@@ -355,7 +355,7 @@ async function runOnAllPackages(command, label, resultKey, cache) {
         stdio: 'pipe',
       })
       results[resultKey].passed.push(pkg.name)
-      if (!jsonMode) process.stdout.write(`${colors.green}.${colors.reset}`)
+      if (!jsonMode) {process.stdout.write(`${colors.green}.${colors.reset}`)}
 
       // NEW: Update cache with current hash
       const currentHash = calculatePackageHash(pkg.path)
@@ -366,16 +366,16 @@ async function runOnAllPackages(command, label, resultKey, cache) {
       // Check if script doesn't exist
       if (err.message.includes('missing script')) {
         results[resultKey].skipped.push(pkg.name)
-        if (!jsonMode) process.stdout.write(`${colors.gray}-${colors.reset}`)
+        if (!jsonMode) {process.stdout.write(`${colors.gray}-${colors.reset}`)}
       } else {
         results[resultKey].failed.push(pkg.name)
         results[resultKey].errors[pkg.name] = err.stderr || err.stdout || err.message
-        if (!jsonMode) process.stdout.write(`${colors.red}F${colors.reset}`)
+        if (!jsonMode) {process.stdout.write(`${colors.red}F${colors.reset}`)}
       }
     }
   }
 
-  if (!jsonMode) console.log('')
+  if (!jsonMode) {console.log('')}
 
   const skippedByCache = cacheHits
   const totalSkipped = results[resultKey].skipped.length
@@ -441,25 +441,23 @@ function loadBaselines() {
 
 // Calculate diff with baselines for all check types
 function calculateDiff(baselines) {
-  if (!baselines) return null
+  if (!baselines) {return null}
 
-  const diff = {
+  return {
     build: calculateCheckDiff('build', baselines.build),
     lint: calculateCheckDiff('lint', baselines.lint),
     typeCheck: calculateCheckDiff('typeCheck', baselines.typeCheck),
     test: calculateCheckDiff('test', baselines.test),
   }
-
-  return diff
 }
 
 // Calculate diff for a specific check type
 function calculateCheckDiff(checkKey, baseline) {
-  if (!baseline) return null
+  if (!baseline) {return null}
 
   const currentFailed = new Set(results[checkKey].failed)
   let baselineFailed = new Set()
-  let perPackage = []
+  const perPackage = []
 
   // Extract baseline failures based on format
   if (checkKey === 'build' && baseline.summary) {
@@ -566,7 +564,7 @@ function calculateCheckDiff(checkKey, baseline) {
     },
     perPackage: perPackage.sort((a, b) => {
       // Sort regressions first, then by baseline errors
-      if (a.isRegression !== b.isRegression) return a.isRegression ? -1 : 1
+      if (a.isRegression !== b.isRegression) {return a.isRegression ? -1 : 1}
       return (typeof b.baseline === 'number' ? b.baseline : 0) - (typeof a.baseline === 'number' ? a.baseline : 0)
     })
   }
@@ -579,16 +577,16 @@ function groupByRepo() {
 
   // Helper to get status for a package in a check
   const getStatus = (checkKey, pkgName) => {
-    if (results[checkKey].passed.includes(pkgName)) return 'passed'
-    if (results[checkKey].failed.includes(pkgName)) return 'failed'
-    if (results[checkKey].skipped.includes(pkgName)) return 'skipped'
+    if (results[checkKey].passed.includes(pkgName)) {return 'passed'}
+    if (results[checkKey].failed.includes(pkgName)) {return 'failed'}
+    if (results[checkKey].skipped.includes(pkgName)) {return 'skipped'}
     return 'not-run'
   }
 
   // Process all packages
   for (const pkg of packages) {
     const repo = getRepoFromPackage(pkg)
-    if (!repo) continue
+    if (!repo) {continue}
 
     // Initialize repo if needed
     if (!byRepo[repo]) {
@@ -617,9 +615,9 @@ function groupByRepo() {
     // Update summary counts
     for (const checkKey of ['build', 'lint', 'typeCheck', 'test']) {
       const status = pkgData[checkKey]
-      if (status === 'passed') byRepo[repo].summary[checkKey].passed++
-      else if (status === 'failed') byRepo[repo].summary[checkKey].failed++
-      else if (status === 'skipped') byRepo[repo].summary[checkKey].skipped++
+      if (status === 'passed') {byRepo[repo].summary[checkKey].passed++}
+      else if (status === 'failed') {byRepo[repo].summary[checkKey].failed++}
+      else if (status === 'skipped') {byRepo[repo].summary[checkKey].skipped++}
     }
   }
 
@@ -713,7 +711,7 @@ function printHumanReport(baselines, diff) {
     totalFailed += failed
     totalSkipped += skipped
     
-    if (failed > 0) hasFailures = true
+    if (failed > 0) {hasFailures = true}
     
     const status = failed > 0 ? `${colors.red}❌` : `${colors.green}✅`
     const percentage = total > 0 ? Math.round((passed / (total - skipped)) * 100) : 100
@@ -746,7 +744,7 @@ function printHumanReport(baselines, diff) {
 
     for (const checkType of checkTypes) {
       const checkDiff = diff[checkType.key]
-      if (!checkDiff) continue
+      if (!checkDiff) {continue}
 
       log(`\n${checkType.icon} ${checkType.label}:`, 'cyan')
       log(`   Baseline: ${checkDiff.summary.baseline} failed`, 'gray')
@@ -863,6 +861,17 @@ async function main() {
       printJsonReport(baselines, diff)
     } else {
       printHumanReport(baselines, diff)
+    }
+
+    // Auto-save QA results to history
+    if (!jsonMode) {
+      log('\n💾 Saving QA results to history...', 'cyan')
+      try {
+        execSync('pnpm qa:save', { stdio: 'inherit' })
+        log('✅ Results saved successfully\n', 'green')
+      } catch (err) {
+        log('⚠️  Failed to save results (this is non-critical)', 'yellow')
+      }
     }
 
   } catch (err) {

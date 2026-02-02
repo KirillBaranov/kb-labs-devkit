@@ -41,7 +41,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { exec } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -871,7 +870,7 @@ function generateJSON(graph, metrics, anomalies, options) {
     healthScore >= 90 ? 'A' : healthScore >= 80 ? 'B' : healthScore >= 70 ? 'C' : healthScore >= 60 ? 'D' : 'F';
 
   // Build final JSON
-  const output = {
+  return {
     metadata: {
       generatedAt: new Date().toISOString(),
       version: '1.0.0',
@@ -892,8 +891,6 @@ function generateJSON(graph, metrics, anomalies, options) {
     },
     recommendations: generateRecommendations(anomalies),
   };
-
-  return output;
 }
 
 /**

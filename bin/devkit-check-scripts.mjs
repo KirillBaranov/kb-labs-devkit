@@ -7,8 +7,8 @@
  * Philosophy: "More is OK, Less is Not"
  */
 
-import { readFile, writeFile } from 'node:fs/promises';
-import { resolve, join, dirname, relative } from 'node:path';
+import { writeFile } from 'node:fs/promises';
+import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readdirSync } from 'node:fs';
 

@@ -115,12 +115,10 @@ function createProgram(packageDir, tsconfigPath) {
     return null;
   }
 
-  const program = ts.createProgram({
+  return ts.createProgram({
     rootNames: parsedConfig.fileNames,
     options: parsedConfig.options,
   });
-
-  return program;
 }
 
 /**
