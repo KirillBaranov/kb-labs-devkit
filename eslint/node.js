@@ -17,7 +17,8 @@ export default [
       '**/node_modules/**',
       '**/*.d.ts',
       '**/scripts/**',
-      '**/eslint.config.*'
+      '**/eslint.config.*',
+      '**/bootstrap.js'
     ]
   },
 
@@ -61,7 +62,7 @@ export default [
           '**/__tests__/**',
           '**/vite.config.*',
           '**/vitest.config.*',
-          '**/tsup.config.*',
+          '**/tsup*.config.*',
           '**/eslint.config.*',
           '**/scripts/**',
         ],
