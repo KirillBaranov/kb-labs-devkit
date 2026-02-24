@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/devkit",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Shared developer toolkit for KB Labs projects: TS/ESLint/Prettier/Vitest/Tsup presets and reusable GitHub Actions.",
   "files": [
@@ -50,7 +50,8 @@
     "kb-devkit-check-build-readiness": "./bin/devkit-check-build-readiness.mjs",
     "kb-devkit-health": "./bin/devkit-health.mjs",
     "kb-devkit-qa": "./bin/kb-devkit-qa.mjs",
-    "kb-devkit-qa-history": "./bin/kb-devkit-qa-history.mjs"
+    "kb-devkit-qa-history": "./bin/kb-devkit-qa-history.mjs",
+    "kb-devkit-core-gate": "./bin/devkit-core-gate.mjs"
   },
   "exports": {
     "./tsconfig/": "./tsconfig/",
@@ -86,6 +87,7 @@
     "./tsup/react-lib": "./tsup/react-lib.js",
     "./tsup/bin": "./tsup/bin.js",
     "./tsup/sdk": "./tsup/sdk.js",
+    "./tsup/dual": "./tsup/dual.js",
     "./agents/": "./agents/",
     "./cursorrules": "./.cursorrules",
     "./.vscode/settings.json": "./.vscode/settings.json",

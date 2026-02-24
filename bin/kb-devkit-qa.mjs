@@ -117,36 +117,38 @@ function calculatePackageHash(pkgPath) {
   const srcDir = join(pkgPath, 'src')
   const pkgJson = join(pkgPath, 'package.json')
 
-  if (!existsSync(srcDir)) {
-    return null // No src directory
-  }
-
   const hash = createHash('sha256')
 
-  // Hash all files in src/
-  function hashDirectory(dir) {
-    try {
-      const files = readdirSync(dir, { withFileTypes: true })
-      for (const file of files) {
-        const fullPath = join(dir, file.name)
-        if (file.isDirectory()) {
-          hashDirectory(fullPath)
-        } else {
-          const content = readFileSync(fullPath, 'utf-8')
-          hash.update(content)
+  // Hash all files in src/ if it exists
+  if (existsSync(srcDir)) {
+    function hashDirectory(dir) {
+      try {
+        const files = readdirSync(dir, { withFileTypes: true })
+        for (const file of files) {
+          const fullPath = join(dir, file.name)
+          if (file.isDirectory()) {
+            hashDirectory(fullPath)
+          } else {
+            const content = readFileSync(fullPath, 'utf-8')
+            hash.update(content)
+          }
         }
+      } catch (err) {
+        // Ignore permission errors
       }
-    } catch (err) {
-      // Ignore permission errors
     }
+    hashDirectory(srcDir)
   }
 
-  hashDirectory(srcDir)
-
-  // Hash package.json (dependencies)
+  // Hash package.json (dependencies/scripts)
   if (existsSync(pkgJson)) {
     const content = readFileSync(pkgJson, 'utf-8')
     hash.update(content)
+  }
+
+  // Return null only if neither src nor package.json exist
+  if (!existsSync(srcDir) && !existsSync(pkgJson)) {
+    return null
   }
 
   return hash.digest('hex')
@@ -157,7 +159,7 @@ function hasPackageChanged(pkgName, pkgPath, cache) {
   if (noCache) {return true} // Skip cache if --no-cache flag
 
   const currentHash = calculatePackageHash(pkgPath)
-  if (!currentHash) {return true} // No src dir, always run
+  if (!currentHash) {return true} // Nothing to hash, always run
 
   const cachedHash = cache[pkgName]
   return currentHash !== cachedHash
@@ -371,6 +373,12 @@ async function runOnAllPackages(command, label, resultKey, cache) {
         results[resultKey].failed.push(pkg.name)
         results[resultKey].errors[pkg.name] = err.stderr || err.stdout || err.message
         if (!jsonMode) {process.stdout.write(`${colors.red}F${colors.reset}`)}
+
+        // Cache hash even for failed packages — if code hasn't changed, no point re-running
+        const currentHash = calculatePackageHash(pkg.path)
+        if (currentHash) {
+          cache[pkg.name] = currentHash
+        }
       }
     }
   }
@@ -851,6 +859,26 @@ async function main() {
     if (!noCache) {
       saveCache(cache)
     }
+
+    // Save last run results so core:gate can read fresh data without re-running
+    try {
+      const lastRunPath = join(CACHE_DIR, 'last-run.json')
+      writeFileSync(lastRunPath, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        git: (() => {
+          try {
+            const commit = execSync('git rev-parse HEAD', { encoding: 'utf-8', stdio: ['pipe','pipe','ignore'] }).trim()
+            return { commit }
+          } catch { return {} }
+        })(),
+        failedPackages: {
+          build: results.build.failed,
+          lint: results.lint.failed,
+          typeCheck: results.typeCheck.failed,
+          test: results.test.failed,
+        }
+      }, null, 2))
+    } catch { /* non-critical */ }
 
     // Load baselines and calculate diff
     const baselines = loadBaselines()
