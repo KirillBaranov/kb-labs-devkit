@@ -17,7 +17,8 @@ export default [
       '**/*.config.js',
       '**/*.config.ts',
       '**/vitest-setup.ts',
-      '**/vitest.setup.ts'
+      '**/vitest.setup.ts',
+      '**/tsup.config.bundled_*.mjs'
     ]
   },
 

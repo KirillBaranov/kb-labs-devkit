@@ -18,7 +18,9 @@ export default [
       '**/*.d.ts',
       '**/scripts/**',
       '**/eslint.config.*',
-      '**/bootstrap.js'
+      '**/tsup.config.*',
+      '**/bootstrap.js',
+      '**/tsup.config.bundled_*.mjs'
     ]
   },
 
@@ -84,7 +86,9 @@ export default [
       // Note: @typescript-eslint/no-floating-promises requires project setup
       'no-return-await': 'error',
       'no-promise-executor-return': 'error',
-      'no-await-in-loop': 'warn',
+      // no-await-in-loop: off globally (too noisy for CLI/fs code).
+      // Enable per-repo where it matters (rest-api, workflow).
+      'no-await-in-loop': 'off',
 
       // Security
       'no-eval': 'error',

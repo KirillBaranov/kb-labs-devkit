@@ -152,4 +152,9 @@ export default defineConfig({
     ...externalList, // Explicitly listed packages (workspace + local deps)
     /^@kb-labs\//, // Force all @kb-labs packages to be external
   ],
+  ignoreWatch: [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/.git/**',
+  ],
 })

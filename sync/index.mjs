@@ -1,6 +1,6 @@
 // Public API: sync runner used by bin and by consumers via import('@kb-labs/devkit/sync')
 import { createHash } from 'node:crypto';
-import { cp, mkdir, readFile, readdir, writeFile, access } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, writeFile, access, chmod } from 'node:fs/promises';
 import { dirname, join, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
@@ -57,7 +57,12 @@ const BASE_MAP = {
     from: resolve(DEVKIT_ROOT, 'templates/configs'),
     to: (root) => root, // Root of package
     type: 'configs', // Special type for config drift checking
-  }
+  },
+  hooks: {
+    from: resolve(DEVKIT_ROOT, 'scripts/hooks'),
+    to: (root) => resolve(root, 'scripts/hooks'),
+    type: 'hooks', // Special type: also installs into .git/hooks/
+  },
 };
 
 function resolveFromDevkit(p) {
@@ -231,7 +236,7 @@ async function runCheck(root, effectiveMap, targets, { verbose, scope }) {
   for (const key of targets) {
     const { from, to, type } = effectiveMap[key];
     const dst = to(root);
-    const res = await comparePaths(from, dst, type);
+    const res = await comparePaths(from, dst, type === 'hooks' ? 'dir' : type);
 
     const changed = (res.diffs.length + res.onlySrc.length + (considerOnlyDst ? res.onlyDst.length : 0)) > 0;
     const item = {
@@ -373,6 +378,7 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
         return [sf, join(dst, rel)];
       });
     }
+    const isHooks = type === 'hooks';
     const beforeState = await Promise.all(filePairs.map(async ([srcFile, dstFile]) => {
       const existed = await exists(dstFile);
       const hb = existed ? await sha256File(dstFile).catch(() => null) : null;
@@ -404,6 +410,24 @@ async function runSync(root, effectiveMap, targets, { force, verbose, dryRun }) 
     details.push({ key, action: 'synced', from, dst, type });
     log(`→ ${key}: ${created} created, ${updated} updated, ${keptF} kept`);
     log(`synced ${key} -> ${dst}`);
+
+    // For hooks: also install into .git/hooks/ and chmod +x
+    if (isHooks) {
+      const gitHooksDir = resolve(root, '.git', 'hooks');
+      const gitDirExists = await exists(resolve(root, '.git'));
+      if (gitDirExists) {
+        await mkdir(gitHooksDir, { recursive: true });
+        for (const [, dstFile] of filePairs) {
+          const hookName = dstFile.slice(dst.length + 1);
+          const gitHookDst = join(gitHooksDir, hookName);
+          await cp(dstFile, gitHookDst, { force: true });
+          await chmod(gitHookDst, 0o755);
+        }
+        log(`hooks installed into .git/hooks/`);
+      } else {
+        warn(`skip .git/hooks install — no .git directory found at ${root}`);
+      }
+    }
   }
   const finishedAt = Date.now();
   log('sync done', summary, `(force=${force}, dry-run=${!!dryRun})`);

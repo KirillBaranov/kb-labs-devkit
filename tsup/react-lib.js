@@ -13,6 +13,11 @@ export default defineConfig({
   outDir: 'dist',
   splitting: false,
   skipNodeModulesBundle: true,
-  shims: false
+  shims: false,
+  ignoreWatch: [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/.git/**',
+  ],
 })
 

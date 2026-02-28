@@ -48,6 +48,11 @@ export default defineConfig({
   splitting: false,
   skipNodeModulesBundle: true,
   shims: false,
+  ignoreWatch: [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/.git/**',
+  ],
   // Mark all node_modules packages as external (including transitive deps)
   // Use noExternal: [] to prevent bundling any node_modules packages
   // This is more reliable than regex for ensuring transitive deps stay external

@@ -169,4 +169,9 @@ export default defineConfig({
   banner: {
     js: '#!/usr/bin/env node',
   },
+  ignoreWatch: [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/.git/**',
+  ],
 });

@@ -115,4 +115,9 @@ export default defineConfig({
     // CJS packages with dynamic require
     ...PROBLEMATIC_CJS_PACKAGES,
   ],
+  ignoreWatch: [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/.git/**',
+  ],
 });
