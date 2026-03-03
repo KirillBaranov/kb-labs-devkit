@@ -1,0 +1,110 @@
+name: reusable-docker-build
+
+# Reusable workflow: build Docker image and push to ghcr.io
+#
+# Usage in consumer repo:
+#   jobs:
+#     call:
+#       uses: KirillBaranov/kb-labs-devkit/.github/workflows/docker-build-reusable.yml@main
+#       with:
+#         image-name: kb-labs-rest-api
+#         dockerfile: Dockerfile
+#       secrets: inherit
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: Docker image name (e.g. kb-labs-rest-api)
+        required: true
+        type: string
+      dockerfile:
+        description: Path to Dockerfile (relative to context)
+        required: false
+        default: Dockerfile
+        type: string
+      context:
+        description: Docker build context (default is repo root)
+        required: false
+        default: .
+        type: string
+      build-args:
+        description: Build args as multiline string (KEY=VALUE per line)
+        required: false
+        default: ''
+        type: string
+      platforms:
+        description: Target platforms (e.g. linux/amd64,linux/arm64)
+        required: false
+        default: linux/amd64
+        type: string
+      registry:
+        description: Container registry host
+        required: false
+        default: ghcr.io
+        type: string
+    outputs:
+      image-tag:
+        description: Full image tag that was pushed
+        value: ${{ jobs.build.outputs.image-tag }}
+      short-sha:
+        description: Short commit SHA used as tag
+        value: ${{ jobs.build.outputs.short-sha }}
+
+jobs:
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+      short-sha: ${{ steps.sha.outputs.short }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.registry }}/${{ github.repository_owner }}/${{ inputs.image-name }}
+          tags: |
+            # rc branch → rc-<sha>
+            type=raw,value=rc-${{ steps.sha.outputs.short }},enable=${{ github.ref == 'refs/heads/rc' }}
+            # release tag → release-1.0.0
+            type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/release-') }}
+            # always tag latest on release
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/release-') }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ inputs.build-args }}
+          cache-from: type=gha,scope=${{ inputs.image-name }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.image-name }}

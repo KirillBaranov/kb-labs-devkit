@@ -1,0 +1,110 @@
+name: reusable-deploy
+
+# Reusable workflow: deploy to VPS via SSH + docker compose
+#
+# Usage in orchestrator repo (e.g. kb-labs root):
+#   jobs:
+#     call:
+#       uses: KirillBaranov/kb-labs-devkit/.github/workflows/deploy-reusable.yml@main
+#       with:
+#         image-tag: release-1.0.0
+#         compose-file: docker-compose.production.yml
+#       secrets: inherit
+#
+# Required secrets in calling repo:
+#   VPS_HOST, VPS_USER, VPS_SSH_KEY
+
+on:
+  workflow_call:
+    inputs:
+      image-tag:
+        description: Docker image tag to deploy (e.g. release-1.0.0)
+        required: true
+        type: string
+      compose-file:
+        description: Path to docker-compose file on VPS
+        required: false
+        default: docker-compose.production.yml
+        type: string
+      deploy-dir:
+        description: Working directory on VPS
+        required: false
+        default: /opt/kb-labs
+        type: string
+      registry:
+        description: Container registry host
+        required: false
+        default: ghcr.io
+        type: string
+      health-check-url:
+        description: URL to check after deploy (e.g. http://localhost:5050/api/v1/health)
+        required: false
+        default: ''
+        type: string
+      health-check-wait:
+        description: Seconds to wait before health check
+        required: false
+        default: '15'
+        type: string
+    secrets:
+      VPS_HOST:
+        required: true
+      VPS_USER:
+        required: true
+      VPS_SSH_KEY:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          DEPLOY_TAG: ${{ inputs.image-tag }}
+          DEPLOY_REGISTRY: ${{ inputs.registry }}/${{ github.repository_owner }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: DEPLOY_TAG,DEPLOY_REGISTRY
+          script: |
+            set -euo pipefail
+            cd ${{ inputs.deploy-dir }}
+
+            echo "→ Deploying tag: $DEPLOY_TAG"
+            echo "→ Registry: $DEPLOY_REGISTRY"
+
+            # Save current tag for rollback
+            [ -f .current-tag ] && cp .current-tag .previous-tag
+            echo "$DEPLOY_TAG" > .current-tag
+
+            # Pull new images
+            TAG="$DEPLOY_TAG" REGISTRY="$DEPLOY_REGISTRY" \
+              docker compose -f ${{ inputs.compose-file }} pull
+
+            # Rolling update
+            TAG="$DEPLOY_TAG" REGISTRY="$DEPLOY_REGISTRY" \
+              docker compose -f ${{ inputs.compose-file }} up -d --remove-orphans
+
+            echo "→ Containers started, waiting ${{ inputs.health-check-wait }}s..."
+            sleep ${{ inputs.health-check-wait }}
+
+            # Show status
+            docker compose -f ${{ inputs.compose-file }} ps
+
+            # Health check (if URL provided)
+            if [ -n "${{ inputs.health-check-url }}" ]; then
+              echo "→ Health check: ${{ inputs.health-check-url }}"
+              wget -qO- "${{ inputs.health-check-url }}" \
+                && echo "✓ Health check passed" \
+                || { echo "✗ Health check failed!"; exit 1; }
+            fi
+
+            # Cleanup old images
+            docker image prune -f > /dev/null 2>&1 || true
+
+            echo "✓ Deploy complete: $DEPLOY_TAG"
