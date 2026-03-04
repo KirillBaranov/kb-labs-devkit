@@ -614,6 +614,6 @@ npx kb-devkit-visualize --tree --package=x   # Dependency tree
 
 ---
 
-**Last Updated**: 2025-11-30
+**Last Updated**: 2026-03-04
 **Version**: 1.0.0
-**Tools Count**: 12
+**Tools Count**: 29

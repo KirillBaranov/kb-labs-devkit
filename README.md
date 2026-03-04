@@ -990,6 +990,143 @@ To generate `tsup.external.json` manually (if needed):
 npx kb-devkit-tsup-external --generate
 ```
 
+### QA History Tracker
+
+Track QA metrics over time and detect regressions:
+
+```bash
+npx kb-devkit-qa-history save          # Save current QA results with git context
+npx kb-devkit-qa-history show          # Show last 20 runs
+npx kb-devkit-qa-history trends        # Show quality trends over time
+npx kb-devkit-qa-history regressions   # Detect new failures since last save
+```
+
+**Root commands:**
+```bash
+pnpm qa:save         # Save current QA state
+pnpm qa:history      # Show history
+pnpm qa:trends       # Show trends
+pnpm qa:regressions  # Detect regressions (exits 1 on regression)
+```
+
+### Core Gate
+
+Check if the 6 core platform monorepos meet zero-failure quality requirements. Reads from the last `pnpm qa` run — no recompilation:
+
+```bash
+npx kb-devkit-core-gate             # Gate check (exits 1 if core is broken)
+npx kb-devkit-core-gate --verbose   # Show failing packages
+npx kb-devkit-core-gate --json      # JSON output
+```
+
+**Core monorepos checked:** `kb-labs-cli`, `kb-labs-core`, `kb-labs-shared`, `kb-labs-sdk`, `kb-labs-rest-api`, `kb-labs-plugin`
+
+**Requirements:** build → zero failures, types → zero errors, lint → zero errors
+
+**Typical flow:**
+```bash
+pnpm qa          # Run checks
+pnpm core:gate   # Inspect core result
+```
+
+### Architecture Audit
+
+Analyze monorepo architecture and detect structural issues:
+
+```bash
+npx kb-devkit-architecture             # Full audit (JSON + HTML graph + markdown report)
+npx kb-devkit-architecture --json      # AI-readable JSON output
+npx kb-devkit-architecture --md        # Markdown report only
+npx kb-devkit-architecture --trends    # Compare with previous runs
+```
+
+**Detects 10 anomaly types** (scored by severity):
+- Circular dependencies (100), Layer violations (90), God packages (80)
+- Unstable core (75), Bidirectional dependencies (70)
+- Large packages >10K LOC (60), Orphan packages (60)
+- Many dependencies >10 (50), Deep chains >7 (50), Missing docs (40)
+
+### Freshness Tracker
+
+Detect stale packages — when package A uses an old build of dependency B:
+
+```bash
+npx kb-devkit-freshness                     # Default table output
+npx kb-devkit-freshness --json              # JSON for AI agents
+npx kb-devkit-freshness --only-stale        # Show only stale packages
+npx kb-devkit-freshness --suggest-rebuild   # Show rebuild order
+npx kb-devkit-freshness --package=cli-core  # Single package analysis
+npx kb-devkit-freshness --age-days=30       # Packages not built in 30+ days
+npx kb-devkit-freshness --high-impact=5     # Packages affecting 5+ others
+```
+
+### Config Checker
+
+Check all packages for configuration drift from standard DevKit templates:
+
+```bash
+npx kb-devkit-check-configs                      # Check all packages
+npx kb-devkit-check-configs --fix                # Auto-fix with backup
+npx kb-devkit-check-configs --package=cli-core   # Check specific package
+npx kb-devkit-check-configs --ci                 # CI mode (fail on drift)
+```
+
+**What it validates:**
+- Missing or modified config files vs standard templates
+- `tsup.config.ts` structure (nodePreset usage, `dts: true`, etc.)
+- Duplicate external/ignores declarations
+
+### Scripts Checker
+
+Validate that all packages have required scripts and devDependencies:
+
+```bash
+npx kb-devkit-check-scripts                      # Check all packages
+npx kb-devkit-check-scripts --fix                # Auto-add missing scripts
+npx kb-devkit-check-scripts --package=cli-core   # Check specific package
+```
+
+**Required scripts validated:** `clean`, `build`, `dev`, `lint`, `lint:fix`, `type-check`, `test`, `test:watch`
+
+### Deprecated Code Checker
+
+Find all `@deprecated` markers in the codebase with context:
+
+```bash
+npx kb-devkit-check-deprecated                       # Check all packages
+npx kb-devkit-check-deprecated --package cli-core    # Check specific package
+npx kb-devkit-check-deprecated --json                # JSON output
+npx kb-devkit-check-deprecated --stats               # Statistics only
+npx kb-devkit-check-deprecated --verbose             # Full context
+```
+
+**Finds:** JSDoc `@deprecated` tags, TypeScript `@deprecated` patterns, inline `// @deprecated` comments.
+
+### Build Readiness Checker
+
+Analyze whether packages can be successfully bundled (useful before creating standalone executables):
+
+```bash
+npx kb-devkit-check-build-readiness
+npx kb-devkit-check-build-readiness --package @kb-labs/cli-bin
+npx kb-devkit-check-build-readiness --fix
+```
+
+**Checks:** missing packages in imports, broken import paths, dependency chains that would fail bundling.
+
+### Config Migrator
+
+Mass migration to standardize all package configurations to current DevKit templates:
+
+```bash
+npx kb-devkit-migrate-configs                      # Dry run (preview only)
+npx kb-devkit-migrate-configs --apply              # Apply changes
+npx kb-devkit-migrate-configs --package=cli-core   # Migrate specific package
+npx kb-devkit-migrate-configs --force              # Skip confirmation prompts
+```
+
+Creates backups before applying changes and generates a migration report.
+
 ## ✨ Features
 
 - **TypeScript**: Ready-to-use `tsconfig` for libraries, Node services, and CLIs
@@ -1493,48 +1630,63 @@ jobs:
 
 ## 📦 Complete Tools Summary
 
-DevKit provides **19 tools** for monorepo management and quality assurance:
+DevKit provides **29 tools** for monorepo management and quality assurance:
 
-### Analysis Tools (8)
-1. **Import Checker** - Find broken imports, unused dependencies, circular deps
-2. **Export Checker** - Find unused exports and dead code
-3. **Duplicate Checker** - Find duplicate dependencies
-4. **Structure Checker** - Validate package structure
-5. **Naming Validator** - Enforce Pyramid Rule naming convention
-6. **Path Validator** - Validate workspace deps, exports, bin paths
-7. **TypeScript Types Audit** - Deep type safety analysis across monorepo
-8. **Visualizer** - Generate dependency graphs and stats
+### Analysis Tools (12)
+1. **Import Checker** (`kb-devkit-check-imports`) - Broken imports, unused deps, circular deps
+2. **Export Checker** (`kb-devkit-check-exports`) - Unused exports and dead code
+3. **Duplicate Checker** (`kb-devkit-check-duplicates`) - Duplicate dependencies
+4. **Structure Checker** (`kb-devkit-check-structure`) - Package structure validation
+5. **Naming Validator** (`kb-devkit-validate-naming`) - Pyramid Rule naming convention
+6. **Path Validator** (`kb-devkit-check-paths`) - Workspace deps, exports, bin paths
+7. **TypeScript Types Audit** (`kb-devkit-types-audit`) - Deep type safety across monorepo
+8. **Visualizer** (`kb-devkit-visualize`) - Dependency graphs and stats
+9. **Architecture Audit** (`kb-devkit-architecture`) - Structural anomalies, layer violations
+10. **Deprecated Checker** (`kb-devkit-check-deprecated`) - Find `@deprecated` markers
+11. **Build Readiness** (`kb-devkit-check-build-readiness`) - Pre-bundle dependency analysis
+12. **Config Checker** (`kb-devkit-check-configs`) - Drift from standard templates
 
-### Automation Tools (8)
-1. **⚡ QA Runner** - Comprehensive quality checks with incremental builds (NEW!)
-2. **Quick Statistics** - Get health scores and metrics
-3. **Dependency Auto-Fixer** - Auto-fix dependency issues
-4. **CI Combo Tool** - Run all checks in one command
-5. **Build Order Calculator** - Determine correct build order
-6. **Types Order Calculator** - Calculate types generation order
-7. **Command Health Checker** - Verify all CLI commands work
-8. **TypeScript Types Checker** - Ensure all packages generate types
+### Automation Tools (11)
+1. **QA Runner** (`kb-devkit-qa`) - ⚡ Incremental builds + lint + types + tests
+2. **QA History** (`kb-devkit-qa-history`) - Track metrics over time, detect regressions
+3. **Core Gate** (`kb-devkit-core-gate`) - Zero-failure gate for 6 core monorepos
+4. **Quick Statistics** (`kb-devkit-stats`) - Health scores and metrics
+5. **Dependency Auto-Fixer** (`kb-devkit-fix-deps`) - Auto-fix dependency issues
+6. **CI Combo Tool** (`kb-devkit-ci`) - All static checks in one command
+7. **Build Order Calculator** (`kb-devkit-build-order`) - Correct build order with layers
+8. **Types Order Calculator** (`kb-devkit-types-order`) - Types generation order
+9. **Command Health Checker** (`kb-devkit-check-commands`) - Verify all CLI commands work
+10. **TypeScript Types Checker** (`kb-devkit-check-types`) - Ensure packages generate types
+11. **Scripts Checker** (`kb-devkit-check-scripts`) - Validate required package scripts
 
-### Infrastructure Tools (3)
-1. **Repository Sync** - Sync DevKit assets across projects
-2. **Path Aliases Generator** - Generate workspace path aliases
-3. **Tsup External Generator** - Generate external dependencies list
+### Infrastructure Tools (6)
+1. **Repository Sync** (`kb-devkit-sync`) - Sync DevKit assets across projects
+2. **Path Aliases Generator** (`kb-devkit-paths`) - Generate workspace path aliases
+3. **Tsup External Generator** (`kb-devkit-tsup-external`) - Generate external deps list
+4. **Freshness Tracker** (`kb-devkit-freshness`) - Detect stale packages in dep chains
+5. **Config Migrator** (`kb-devkit-migrate-configs`) - Mass migrate configs to current templates
+6. **Health Check** (`kb-devkit-health`) - Comprehensive health check with grade A–F
 
 ### Quick Access
 ```bash
 # Quality Assurance (recommended)
-npx kb-devkit-qa                    # ⚡ Incremental builds (~20s)
-npx kb-devkit-ci                    # All static checks
+npx kb-devkit-qa                      # ⚡ Incremental builds (~20s)
+npx kb-devkit-qa-history regressions  # Detect regressions
+npx kb-devkit-core-gate               # Zero-failure gate for core
+npx kb-devkit-ci                      # All static checks
 
 # Analysis
-npx kb-devkit-check-imports         # Imports
-npx kb-devkit-check-exports         # Exports
-npx kb-devkit-types-audit           # Type safety
+npx kb-devkit-check-imports           # Imports
+npx kb-devkit-check-exports           # Exports
+npx kb-devkit-types-audit             # Type safety
+npx kb-devkit-architecture --md       # Architecture report
+npx kb-devkit-freshness --only-stale  # Stale packages
 
 # Automation
-npx kb-devkit-fix-deps --dry-run    # Fix dependencies
-npx kb-devkit-build-order --layers  # Build order
-npx kb-devkit-stats --health        # Health score
+npx kb-devkit-fix-deps --dry-run      # Fix dependencies
+npx kb-devkit-build-order --layers    # Build order
+npx kb-devkit-stats --health          # Health score
+npx kb-devkit-check-configs           # Config drift
 ```
 
 ## License
