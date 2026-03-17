@@ -27,6 +27,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Shared package discovery — supports both flat and categorized layouts
+import { findPackages as _findPackagePaths } from './lib/find-packages.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ANSI colors
@@ -85,48 +88,30 @@ Options:
 }
 
 /**
- * Find all kb-labs-* packages
+ * Find all kb-labs-* packages with src directories
  */
 function findPackages(rootDir, filterPackage) {
-  const packages = [];
-  const entries = fs.readdirSync(rootDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
-
-    const repoPath = path.join(rootDir, entry.name);
-    const packagesDir = path.join(repoPath, 'packages');
-
-    if (!fs.existsSync(packagesDir)) {continue;}
-
-    const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
-
-    for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) {continue;}
-
-      if (filterPackage && pkgDir.name !== filterPackage) {continue;}
-
-      const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
-      const srcDir = path.join(packagesDir, pkgDir.name, 'src');
-
-      if (fs.existsSync(packageJsonPath) && fs.existsSync(srcDir)) {
-        try {
-          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-          packages.push({
-            name: packageJson.name,
-            shortName: pkgDir.name,
-            repo: entry.name,
-            path: path.join(packagesDir, pkgDir.name),
-            srcPath: srcDir,
-          });
-        } catch {
-          // Skip invalid package.json
-        }
+  return _findPackagePaths(rootDir, filterPackage)
+    .map((pkgPath) => {
+      const dir = path.dirname(pkgPath);
+      const srcDir = path.join(dir, 'src');
+      if (!fs.existsSync(srcDir)) return null;
+      try {
+        const packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const parts = pkgPath.split(path.sep);
+        const repo = parts.find((p) => p.startsWith('kb-labs-')) || 'unknown';
+        return {
+          name: packageJson.name,
+          shortName: path.basename(dir),
+          repo,
+          path: dir,
+          srcPath: srcDir,
+        };
+      } catch {
+        return null;
       }
-    }
-  }
-
-  return packages;
+    })
+    .filter(Boolean);
 }
 
 /**

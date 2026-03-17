@@ -22,6 +22,9 @@ import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
+// Shared package discovery — supports both flat and categorized layouts
+import { findPackages } from './lib/find-packages.mjs';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '../..');
 
@@ -34,31 +37,18 @@ console.log('🔍 KB Labs Build Readiness Checker\n');
 
 // Step 1: Find all workspace packages
 function findWorkspacePackages() {
-  const packages = [];
-  const monorepos = readdirSync(rootDir).filter(d => d.startsWith('kb-labs-'));
-
-  for (const monorepo of monorepos) {
-    const packagesDir = join(rootDir, monorepo, 'packages');
-    if (!existsSync(packagesDir)) {continue;}
-
-    for (const pkg of readdirSync(packagesDir)) {
-      const pkgJsonPath = join(packagesDir, pkg, 'package.json');
-      if (!existsSync(pkgJsonPath)) {continue;}
-
-      try {
-        const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
-        packages.push({
-          name: pkgJson.name,
-          path: join(packagesDir, pkg),
-          pkgJson,
-        });
-      } catch (e) {
-        // Skip invalid package.json
-      }
+  return findPackages(rootDir).map((pkgJsonPath) => {
+    try {
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
+      return {
+        name: pkgJson.name,
+        path: dirname(pkgJsonPath),
+        pkgJson,
+      };
+    } catch (e) {
+      return null;
     }
-  }
-
-  return packages;
+  }).filter(Boolean);
 }
 
 // Step 2: Get import checker results

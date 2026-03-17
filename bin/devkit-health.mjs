@@ -28,6 +28,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 
+// Shared package discovery — supports both flat and categorized layouts
+import { findPackages as _findPackagePaths } from './lib/find-packages.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ANSI colors
@@ -66,42 +69,17 @@ const rootDir = findMonorepoRoot();
  * Find all packages in monorepo
  */
 function findAllPackages() {
-  const packages = [];
-  const searchDirs = [
-    'packages',
-    'kb-labs-*/packages',
-  ];
-
-  for (const pattern of searchDirs) {
-    const dirs = pattern.includes('*')
-      ? execSync(`find ${rootDir} -type d -path "*/${pattern}" 2>/dev/null || true`, { encoding: 'utf-8' })
-          .split('\n')
-          .filter(Boolean)
-      : [path.join(rootDir, pattern)];
-
-    for (const dir of dirs) {
-      if (!fs.existsSync(dir)) {continue;}
-
-      const subDirs = fs.readdirSync(dir, { withFileTypes: true })
-        .filter((d) => d.isDirectory())
-        .map((d) => path.join(dir, d.name));
-
-      for (const subDir of subDirs) {
-        const pkgPath = path.join(subDir, 'package.json');
-        if (fs.existsSync(pkgPath)) {
-          try {
-            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-            if (packageFilter && !pkg.name.includes(packageFilter)) {continue;}
-            packages.push({ name: pkg.name, path: subDir, pkg });
-          } catch (err) {
-            // Skip invalid package.json
-          }
-        }
+  return _findPackagePaths(rootDir)
+    .map((pkgJsonPath) => {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
+        if (packageFilter && !pkg.name.includes(packageFilter)) return null;
+        return { name: pkg.name, path: path.dirname(pkgJsonPath), pkg };
+      } catch (err) {
+        return null;
       }
-    }
-  }
-
-  return packages;
+    })
+    .filter(Boolean);
 }
 
 /**

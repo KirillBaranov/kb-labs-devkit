@@ -25,6 +25,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Shared package discovery — supports both flat and categorized layouts
+import { findPackages as _findPackagePaths } from './lib/find-packages.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ANSI colors
@@ -57,42 +60,18 @@ const options = {
 };
 
 /**
- * Find all packages
+ * Find all packages with TypeScript configs
  */
 function findPackages(rootDir) {
-  const packages = [];
-  const entries = fs.readdirSync(rootDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
-
-    const repoPath = path.join(rootDir, entry.name);
-    const packagesDir = path.join(repoPath, 'packages');
-
-    if (!fs.existsSync(packagesDir)) {continue;}
-
-    const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
-
-    for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) {continue;}
-
-      const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
-      const tsconfigPath = path.join(packagesDir, pkgDir.name, 'tsconfig.json');
-
-      if (fs.existsSync(packageJsonPath) && fs.existsSync(tsconfigPath)) {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-
-        packages.push({
-          name: packageJson.name,
-          path: packageJsonPath,
-          dir: path.join(packagesDir, pkgDir.name),
-          tsconfigPath,
-        });
-      }
-    }
-  }
-
-  return packages;
+  return _findPackagePaths(rootDir)
+    .map((pkgPath) => {
+      const dir = path.dirname(pkgPath);
+      const tsconfigPath = path.join(dir, 'tsconfig.json');
+      if (!fs.existsSync(tsconfigPath)) return null;
+      const packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      return { name: packageJson.name, path: pkgPath, dir, tsconfigPath };
+    })
+    .filter(Boolean);
 }
 
 /**

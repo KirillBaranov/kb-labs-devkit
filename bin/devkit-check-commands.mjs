@@ -17,6 +17,9 @@ import { execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Shared package discovery — supports both flat and categorized layouts
+import { findPackages } from './lib/find-packages.mjs';
+
 // ANSI colors
 const colors = {
   reset: '\x1b[0m',
@@ -49,31 +52,12 @@ const options = {
  * Find all plugin manifests in monorepo
  */
 function findPluginManifests(rootDir) {
-  const manifests = [];
-  const entries = fs.readdirSync(rootDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
-
-    const repoPath = path.join(rootDir, entry.name);
-    const packagesDir = path.join(repoPath, 'packages');
-
-    if (!fs.existsSync(packagesDir)) {continue;}
-
-    const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
-
-    for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) {continue;}
-
-      const manifestPath = path.join(packagesDir, pkgDir.name, 'manifest.json');
-
-      if (fs.existsSync(manifestPath)) {
-        manifests.push(manifestPath);
-      }
-    }
-  }
-
-  return manifests;
+  return findPackages(rootDir)
+    .map((pkgPath) => {
+      const manifestPath = path.join(path.dirname(pkgPath), 'manifest.json');
+      return fs.existsSync(manifestPath) ? manifestPath : null;
+    })
+    .filter(Boolean);
 }
 
 /**

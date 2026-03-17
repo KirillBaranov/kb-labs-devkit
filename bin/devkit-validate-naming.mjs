@@ -13,6 +13,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Shared package discovery — supports both flat and categorized layouts
+import { findPackages as _findPackagePaths } from './lib/find-packages.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ANSI colors
@@ -93,41 +96,12 @@ function validatePackage(packageJsonPath, repoName) {
 }
 
 function findPackages(rootDir) {
-  const packages = [];
-
-  // Find all kb-labs-* directories
-  const entries = fs.readdirSync(rootDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('kb-labs-')) {continue;}
-
-    const repoPath = path.join(rootDir, entry.name);
-    const packagesDir = path.join(repoPath, 'packages');
-
-    if (!fs.existsSync(packagesDir)) {continue;}
-
-    const repoName = extractRepoName(entry.name);
-    if (!repoName) {continue;}
-
-    // Find all package.json files in packages/
-    const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true });
-
-    for (const pkgDir of packageDirs) {
-      if (!pkgDir.isDirectory()) {continue;}
-
-      const packageJsonPath = path.join(packagesDir, pkgDir.name, 'package.json');
-
-      if (fs.existsSync(packageJsonPath)) {
-        packages.push({
-          path: packageJsonPath,
-          repoName,
-          repoPath: entry.name,
-        });
-      }
-    }
-  }
-
-  return packages;
+  return _findPackagePaths(rootDir).map((pkgPath) => {
+    const parts = pkgPath.split(path.sep);
+    const repoDir = parts.find((p) => p.startsWith('kb-labs-')) || 'unknown';
+    const repoName = extractRepoName(repoDir);
+    return { path: pkgPath, repoName, repoPath: repoDir };
+  }).filter((p) => p.repoName);
 }
 
 function main() {
