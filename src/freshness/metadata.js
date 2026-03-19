@@ -6,7 +6,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * Find all packages in monorepo
+ * Recursively discovers all packages across every `kb-labs-*` sub-repository
+ * found directly inside `rootDir`.
+ *
+ * For each sub-repository directory whose name starts with `kb-labs-`, the
+ * function looks for a `packages/` sub-directory and collects the absolute
+ * path of every `package.json` found one level deeper. Directories that do
+ * not contain a `packages/` folder, or package entries that lack a
+ * `package.json`, are silently skipped.
+ *
+ * @param {string} rootDir - Absolute (or relative) path to the monorepo root
+ *   directory whose immediate children are the individual `kb-labs-*` repos.
+ * @param {string} [filterPackage] - Optional package directory name to limit
+ *   results to a single package. When provided, only the package whose
+ *   directory name matches this value exactly is included in the output.
+ * @returns {string[]} An array of absolute paths to `package.json` files, one
+ *   entry per discovered (and optionally filtered) package.
+ *
+ * @example
+ * // Discover every package in the monorepo
+ * const all = findPackages('/workspace');
+ *
+ * @example
+ * // Discover only the 'my-package' package
+ * const one = findPackages('/workspace', 'my-package');
  */
 export function findPackages(rootDir, filterPackage) {
   const packages = [];
