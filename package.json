@@ -157,12 +157,14 @@
   "dependencies": {
     "eslint-import-resolver-typescript": "^3.10.1",
     "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "glob": "^11.0.0",
     "yaml": "^2.8.0"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/devkit": "link:./",
     "@types/node": "^24.3.3",
     "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.35.0",
