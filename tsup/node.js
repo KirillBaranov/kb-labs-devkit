@@ -1,7 +1,39 @@
 import { defineConfig } from 'tsup'
 import { readTsupExternalSync } from './external-sync.mjs'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+
+/**
+ * Derive tsup entry points from package.json exports field.
+ * Maps each export value like "./dist/foo.js" → "src/foo.ts" (or root "foo.ts").
+ * Falls back to ['src/index.ts'] if no exports or src file not found.
+ */
+function resolveEntryFromExports() {
+  try {
+    const pkgPath = join(process.cwd(), 'package.json')
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+    const exportsMap = pkg.exports ?? {}
+    const srcFiles = new Set()
+
+    for (const condition of Object.values(exportsMap)) {
+      // condition can be a string or { import, types, require, ... }
+      const importPath = typeof condition === 'string' ? condition
+        : (condition.import ?? condition.default ?? null)
+      if (!importPath || typeof importPath !== 'string') continue
+
+      // "./dist/foo.js" → "foo", then try "src/foo.ts" or "foo.ts"
+      const base = importPath.replace(/^\.\/dist\//, '').replace(/\.js$/, '')
+      const candidates = [`src/${base}.ts`, `${base}.ts`]
+      for (const c of candidates) {
+        if (existsSync(join(process.cwd(), c))) { srcFiles.add(c); break }
+      }
+    }
+
+    return srcFiles.size > 0 ? Array.from(srcFiles) : ['src/index.ts']
+  } catch {
+    return ['src/index.ts']
+  }
+}
 
 function resolveExternalDependencies() {
   try {
@@ -32,11 +64,12 @@ function getExternal() {
   return resolveExternalDependencies()
 }
 
-// Pre-compute external list once at module load time
+// Pre-compute external list and entry once at module load time
 const externalList = getExternal()
+const entryFromExports = resolveEntryFromExports()
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: entryFromExports,
   format: ['esm'],
   target: 'es2022',
   sourcemap: true,
