@@ -1,3 +1,18 @@
+## [1.4.0] - 2026-04-06
+
+> **@kb-labs/devkit** 1.3.0 → 1.4.0 (minor: new features)
+
+### ✨ New Features
+
+- **tsup/node**: Automatically identifies entry points from the package.json exports, simplifying the setup process for developers and enhancing project organization.
+- **general**: Introduces the `isPolicyPassing` utility function in policy-contracts, allowing users to easily check if a policy has been successfully met, streamlining decision-making (#1).
+- **eslint**: Adds a preset export for plugins with boundary enforcement, helping developers maintain code quality and structure by providing clear guidelines for architectural integrity.
+- **eslint**: Introduces a plugin preset that enforces architectural boundaries, ensuring that code adheres to established design principles, which can lead to better maintainability and fewer bugs.
+- **tsup**: Includes dts output in all preset configurations and extends eslint, ensuring that types are properly defined and synchronized, which enhances type safety and developer experience.
+
+### 🐛 Bug Fixes
+
+- **general**: Enhances the TypeScript configuration for Node.js, helping developers avoid type errors and improving code quality across shared projects.
 ## [1.3.0] - 2026-04-06
 
 > **@kb-labs/devkit** 1.2.0 → 1.3.0 (minor: new features)
